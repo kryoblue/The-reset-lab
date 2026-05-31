@@ -6011,6 +6011,61 @@ function generateDashboardV2(){
     return 'Your recovery is the limiter right now, so performance may swing from session to session. Prioritize sleep, downshifting, and load management so training starts from a fresher baseline.';
   }
   var lineSummary = coachSummary(lowKey);
+  function coachContent(key){
+    return getContent(window._selectedSport || 'general', key, getBandKey(domainScore(key)));
+  }
+  function impactLevel(score){ return score < 5.5 ? 'High' : score < 7 ? 'Moderate' : 'Low'; }
+  function consequenceFor(key){
+    var c = coachContent(key);
+    return c.consequence || c.gap || c.plain || '';
+  }
+  function sentenceParts(text){
+    return (String(text || '').match(/[^.!?]+[.!?]?/g) || []).map(function(t){return t.trim();}).filter(Boolean).slice(0,3);
+  }
+  function collectBottlenecks(){
+    var items = [
+      {name:'Breathing Pattern',score:R.B.ps,key:'breathing'},
+      {name:'Breathing Route',score:R.B.rs,key:'breathing'},
+      {name:'CO₂ Tolerance',score:R.B.ts,key:'breathing'},
+      {name:'Breathing Recovery',score:R.B.recs,key:'breathing'},
+      {name:'Single-Leg Push-Off',score:R.P.slhrScore,key:'stability'},
+      {name:'Sit-to-Stand Power',score:R.P.stsScore,key:'stability'},
+      {name:'Neck Endurance',score:R.P.dnfeScore,key:'stability'},
+      {name:'Single-Leg Stability',score:R.P.slsScore,key:'stability'},
+      {name:'Sleep Quality',score:R.R.sl,key:'recovery'},
+      {name:'Energy Output',score:R.R.en,key:'recovery'},
+      {name:'Mental Readiness',score:R.R.mn,key:'recovery'},
+      {name:'Body Tension',score:R.R.tn,key:'recovery'}
+    ];
+    if(!R.R.hrvSkip && R.R.hrv!==null && R.R.hrv!==undefined) items.push({name:'HRV Recovery Signal',score:R.R.hrv,key:'recovery'});
+    return items.filter(function(i){return typeof i.score==='number' && !isNaN(i.score);})
+      .sort(function(a,b){return a.score-b.score;})
+      .slice(0,3)
+      .map(function(i){return {name:i.name,impact:impactLevel(i.score),consequence:consequenceFor(i.key)};});
+  }
+  function coachMatchBullets(){
+    var keys = [lowKey].concat(['breathing','stability','recovery'].filter(function(k){return k!==lowKey;}));
+    var bullets = [];
+    keys.forEach(function(k){ sentenceParts(consequenceFor(k)).forEach(function(t){ if(bullets.length<3) bullets.push(t); }); });
+    return bullets;
+  }
+  function coachInterventions(){
+    var c = coachContent(lowKey);
+    var actions = (c.actions && c.actions.length ? c.actions : interventionSource(lowKey)).slice(0,3);
+    return actions.map(function(raw,idx){
+      var text = String(raw || '');
+      var name = text.split(/\s[-–—]\s/)[0].split('.')[0].trim() || ('Intervention '+(idx+1));
+      var detail = text.replace(name,'').replace(/^[-–—.\s]+/,'').trim();
+      return {
+        name:name,
+        why:detail || c.plain || consequenceFor(lowKey),
+        outcome:c.gap || consequenceFor(lowKey)
+      };
+    });
+  }
+  var coachBottlenecks = collectBottlenecks();
+  var coachBullets = coachMatchBullets();
+  var coachPriorityInterventions = coachInterventions();
 
   var css = [
     '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
@@ -6069,9 +6124,27 @@ function generateDashboardV2(){
     '.step-copy{font-size:9.8px;color:#B8C3D6;line-height:1.28;}',
     '.card,.domain-card,.summary,.plan,.plan-step,.limiter,.impact,.metric-card,.metric-grid,.stack,.grid,.domain-grid{page-break-inside:avoid;break-inside:avoid;-webkit-column-break-inside:avoid;}',
     '.card,.domain-card,.summary,.plan,.limiter,.impact,.metric-card,.metric-grid,.stack,.grid,.domain-grid{page-break-before:auto;break-before:auto;}',
+    '.coach-page{width:100%;min-height:100vh;background:linear-gradient(135deg,#08111F 0%,#101827 52%,#15111F 100%);padding:18px;color:#EAF0FF;page-break-before:always;break-before:page;}',
+    '.coach-shell{max-width:980px;margin:0 auto;}',
+    '.coach-hero{background:linear-gradient(150deg,rgba(12,21,38,.98),rgba(24,38,64,.98));border:1.5px solid rgba(45,212,191,.32);border-radius:20px;padding:18px;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-title{font-size:34px;font-weight:950;letter-spacing:-1.4px;color:#fff;line-height:1;}',
+    '.coach-sub{font-size:12px;color:#AAB7CC;line-height:1.45;margin-top:8px;max-width:720px;}',
+    '.coach-section{background:rgba(15,23,42,.86);border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:14px;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-section-title{font-size:10px;text-transform:uppercase;letter-spacing:1.7px;color:#7DE8DA;font-weight:950;margin-bottom:9px;}',
+    '.coach-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
+    '.coach-item{background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:10px;page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-item-title{font-size:13px;font-weight:950;color:#fff;line-height:1.2;margin-bottom:6px;}',
+    '.impact-pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:8.5px;font-weight:950;background:rgba(45,212,191,.12);color:#7DE8DA;margin-bottom:6px;}',
+    '.coach-copy{font-size:10.5px;color:#C6D1E3;line-height:1.38;}',
+    '.coach-bullets{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
+    '.coach-bullet{background:rgba(53,167,255,.08);border:1px solid rgba(53,167,255,.22);border-radius:14px;padding:10px;font-size:11px;color:#DCEBFF;line-height:1.4;font-weight:750;}',
+    '.retest-row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
+    '.retest-card{background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:12px;text-align:center;}',
+    '.retest-num{font-size:29px;font-weight:950;color:#fff;line-height:1;white-space:nowrap;}',
+    '.retest-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#AAB7CC;font-weight:900;margin-top:6px;}',
     '.printbar{position:sticky;top:0;z-index:10;background:#0F172A;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(148,163,184,.25);}',
     '.printbar button{background:#2DD4BF;color:#06111F;border:0;border-radius:999px;padding:9px 18px;font-weight:900;cursor:pointer;}',
-    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;max-height:297mm;overflow:hidden;padding:5mm;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);page-break-after:always;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:96px}.age-num{font-size:50px}.plan-title{font-size:16px}.metric-grid{page-break-before:auto;break-before:auto}.metric-small{font-size:8px}.metric-num{font-size:18px}.step-copy{font-size:9.2px}}',
+    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;max-height:297mm;overflow:hidden;padding:5mm;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);page-break-after:always;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:96px}.age-num{font-size:50px}.plan-title{font-size:16px}.metric-grid{page-break-before:auto;break-before:auto}.metric-small{font-size:8px}.metric-num{font-size:18px}.step-copy{font-size:9.2px}.coach-page{width:210mm;min-height:297mm;padding:7mm;page-break-before:always;break-before:page}.coach-title{font-size:31px}.coach-section{padding:12px;margin-bottom:8px}.coach-copy{font-size:9.8px}}',
     '@media screen and (max-width:760px){.grid,.stack,.domain-grid,.metric-grid,.plan-grid{grid-template-columns:1fr}.score-hero{grid-row:auto}.hero-row{flex-direction:column}.score-num{font-size:82px}}'
   ].join('\n');
 
@@ -6080,6 +6153,14 @@ function generateDashboardV2(){
     {key:'stability',accent:'#A78BFA'},
     {key:'recovery',accent:'#F59E0B'}
   ];
+
+  var coachPage = '<section class="coach-page"><div class="coach-shell">'+
+    '<div class="coach-hero"><div class="label">Page 2 · Coach Performance Report</div><div class="coach-title">Coach Performance Report</div><div class="coach-sub">Actionable performance intelligence for coaches, physiotherapists, strength coaches, and parents. Built from the athlete&#39;s sport profile, weakest domain, assessment findings, and existing content library.</div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 1 · Performance Bottlenecks</div><div class="coach-grid-3">'+coachBottlenecks.map(function(b){return '<div class="coach-item"><div class="coach-item-title">'+esc(b.name)+'</div><span class="impact-pill">'+esc(b.impact)+' Impact</span><div class="coach-copy">'+esc(b.consequence)+'</div></div>';}).join('')+'</div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 2 · Match-Day Impact</div><div class="coach-bullets">'+coachBullets.map(function(b){return '<div class="coach-bullet">'+esc(b)+'</div>';}).join('')+'</div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 3 · Priority Interventions</div><div class="coach-grid-3">'+coachPriorityInterventions.map(function(i){return '<div class="coach-item"><div class="coach-item-title">'+esc(i.name)+'</div><div class="coach-copy"><strong style="color:#7DE8DA">Why it matters:</strong> '+esc(i.why)+'</div><div class="coach-copy" style="margin-top:7px;"><strong style="color:#FDE68A">Expected outcome:</strong> '+esc(i.outcome)+'</div></div>';}).join('')+'</div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 4 · Retest Recommendation</div><div class="retest-row"><div class="retest-card"><div class="retest-num">'+currentLimiterScore.toFixed(1)+'</div><div class="retest-label">Current Score</div></div><div class="retest-card"><div class="retest-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div><div class="retest-label">Target Score</div></div><div class="retest-card"><div class="retest-num" style="color:#FDE68A">6 Weeks</div><div class="retest-label">Recommended Retest Window</div></div></div></div>'+
+  '</div></section>';
 
   var html = '<!DOCTYPE html><html lang="en"><head>'+
     '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">'+
@@ -6121,7 +6202,7 @@ function generateDashboardV2(){
         '<div class="metric-card"><div class="label">Projected Potential</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+R.overall.toFixed(1)+'</div></div><div><div class="metric-small">Potential</div><div class="metric-num" style="color:#7DE8DA">'+potentialScore.toFixed(1)+'</div></div></div><div class="metric-small">If '+domainLabel(lowKey).toLowerCase()+' reaches 7.0.</div></div>'+
         '<div class="metric-card"><div class="label">Coach Metric</div><div class="metric-small">Performance Readiness</div><div class="metric-num" style="font-size:22px;color:#35A7FF;white-space:nowrap;">'+readinessPct+'%</div><div class="metric-small">Overall score as readiness %.</div></div>'+
       '</section>'+
-    '</div></main></body></html>';
+    '</div></main>'+coachPage+'</body></html>';
 
   downloadReport(html);
 }
