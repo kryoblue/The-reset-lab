@@ -5908,22 +5908,72 @@ function generateDashboardV2(){
     if(key==='stability') return 'Match-day impact: reduced control during deceleration, landing, cutting, or fatigue-state technique. '+intensity;
     return 'Match-day impact: lower readiness, slower warm-up response, and bigger performance swings across the session. '+intensity;
   }
-  function actionPlan(key){
-    if(key==='breathing') return [
-      {d:'Days 1–10',t:'Reset breathing mechanics',x:'5 min nasal diaphragmatic breathing daily; keep exhale quiet and controlled.'},
-      {d:'Days 11–20',t:'Build CO₂ tolerance',x:'3–4 short tolerance sessions weekly at 50–70% effort; never force holds.'},
-      {d:'Days 21–30',t:'Transfer to training',x:'Use 3 slow nasal breaths between efforts and track recovery time.'}
-    ];
-    if(key==='stability') return [
-      {d:'Days 1–10',t:'Own positions',x:'Daily posture reset plus controlled single-leg balance; stop before form breaks.'},
-      {d:'Days 11–20',t:'Build repeatable strength',x:'Add split-squat or sit-to-stand quality work 3× weekly, pain-free.'},
-      {d:'Days 21–30',t:'Integrate sport movement',x:'Use low-volume deceleration, landing, or change-of-direction drills with clean mechanics.'}
-    ];
-    return [
-      {d:'Days 1–10',t:'Stabilize sleep timing',x:'Set consistent sleep/wake anchors and reduce late screen exposure.'},
-      {d:'Days 11–20',t:'Downshift the nervous system',x:'Add 5 minutes of slow breathing before sleep or after training.'},
-      {d:'Days 21–30',t:'Track readiness',x:'Log sleep quality, energy, tension, and training response; adjust load when recovery drops.'}
-    ];
+  function interventionSource(key){
+    if(key==='breathing') return (R.B && R.B.ints) ? R.B.ints : [];
+    if(key==='stability') return (R.P && R.P.ints) ? R.P.ints : [];
+    return (R.R && R.R.ints) ? R.R.ints : [];
+  }
+  function interventionBenefit(title, key){
+    var lookup = {
+      'Crocodile Breathing':'Improve diaphragmatic patterning and reduce chest-dominant breathing effort.',
+      'Box Breathing':'Improve breath control under pressure and support calmer recovery between efforts.',
+      'Breath Hold Training':'Improve CO₂ tolerance and the ability to stay composed during high-intensity work.',
+      'Cadence Breathing':'Improve rhythm, autonomic regulation, and repeat-effort recovery.',
+      'Nasal Breath Training':'Improve resting airflow control and reduce unnecessary mouth-breathing effort.',
+      'Post-Activity Recovery Breath':'Improve post-effort downshift and shorten breathing recovery time.',
+      'Bulgarian Split Squat':'Improve single-leg stability and push-off strength.',
+      'Lateral Band Walk':'Improve lateral movement control and hip stability.',
+      'Single Leg Balance':'Improve ankle stability, balance confidence, and landing control.',
+      'Deep Neck Flexor Training':'Improve neck endurance and head-position control under fatigue.',
+      'Calf Raise Progression':'Improve lower-leg capacity, ankle stiffness, and repeat push-off strength.',
+      'Sleep Hygiene Reset':'Improve sleep consistency and overnight recovery quality.',
+      'HRV Breathing Protocol':'Improve parasympathetic recovery and readiness regulation.',
+      'Strategic Rest Scheduling':'Improve adaptation by matching training load to recovery capacity.',
+      'Stress-Tension Release':'Reduce unnecessary muscular tension and improve relaxation response.'
+    };
+    var lookupKey = Object.keys(lookup).filter(function(k){ return k.toLowerCase()===String(title).toLowerCase(); })[0];
+    if(lookupKey) return lookup[lookupKey];
+    if(key==='breathing') return 'Improve breathing efficiency, recovery control, and repeat-effort composure.';
+    if(key==='stability') return 'Improve movement quality, force transfer, and fatigue-resistant mechanics.';
+    return 'Improve readiness, adaptation, and consistency between training sessions.';
+  }
+  function actionDose(title, raw, key){
+    var lower = title.toLowerCase();
+    if(lower.indexOf('bulgarian split squat')>-1) return '3 x 8 each leg · 2x/week';
+    if(lower.indexOf('lateral band walk')>-1) return '3 x 15 steps each direction';
+    if(lower.indexOf('single leg')>-1 && lower.indexOf('balance')>-1) return '20 seconds each leg · 3x/day';
+    if(lower.indexOf('breath hold')>-1) return '4–5 controlled cycles · 3–4x/week';
+    if(lower.indexOf('box breathing')>-1) return '4 rounds · 4 seconds each phase';
+    if(lower.indexOf('nasal')>-1) return 'Daily awareness during rest and screen time';
+    if(lower.indexOf('sleep')>-1) return 'Nightly routine · consistent sleep/wake anchor';
+    if(lower.indexOf('hrv')>-1 || lower.indexOf('cadence')>-1) return '5 minutes daily';
+    if(lower.indexOf('rest')>-1) return 'Plan 1 low-load recovery window per week';
+    var match = String(raw).match(/((?:\d+|one|two|three|four|five|six|daily|weekly)[^.]*(?:reps?|sets?|seconds?|minutes?|mins?|steps?|cycles?|week|day|daily|weekly|x|×)[^.]*)/i);
+    if(match) return match[1].replace(/^[-–—\s]+/,'');
+    if(key==='breathing') return '5 minutes daily';
+    if(key==='stability') return '2–3 sets · 2–3x/week';
+    return 'Daily recovery habit';
+  }
+  function normalizeAction(raw, key, idx){
+    raw = String(raw || '');
+    var title = raw.split(/\s[-–—]\s/)[0].split('.')[0].trim();
+    if(title.length>42) title = title.replace(/\s+(protocol|training|drills|practice)$/i,'');
+    var benefitText = raw.indexOf('.')>-1 ? raw.split('.').slice(1).join('.').trim() : '';
+    var displayTitle = title ? title.split(' ').map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ') : ('Action '+(idx+1));
+    return {
+      d:'Action '+(idx+1),
+      t:displayTitle,
+      dose:actionDose(title, raw, key),
+      x:benefitText || interventionBenefit(title, key)
+    };
+  }
+  function nextActions(key){
+    var source = interventionSource(key).slice(0,3);
+    if(source.length===0) source = key==='breathing' ? ['Cadence Breathing','Nasal Breath Training','Post-Activity Recovery Breath']
+      : key==='stability' ? ['Bulgarian Split Squat','Lateral Band Walk','Single Leg Balance']
+      : ['Sleep Hygiene Reset','HRV Breathing Protocol','Strategic Rest Scheduling'];
+    while(source.length<3){ source.push(key==='stability'?'Single Leg Balance':key==='breathing'?'Cadence Breathing':'HRV Breathing Protocol'); }
+    return source.slice(0,3).map(function(item,idx){ return normalizeAction(item,key,idx); });
   }
   function bodyAge(){
     var chronologicalAge = Number(R.age || 0);
@@ -5940,10 +5990,21 @@ function generateDashboardV2(){
   var lowKey = lowestDomainKey();
   var limiter = limiterCopy(lowKey);
   var ba = bodyAge();
-  var plan = actionPlan(lowKey);
+  var plan = nextActions(lowKey);
+  var targetScore = 7.0;
+  var currentLimiterScore = domainScore(lowKey);
+  var gapToTarget = Math.max(0, targetScore - currentLimiterScore);
+  var projectedScores = {b:R.B.score,p:R.P.score,r:R.R.score};
+  if(lowKey==='breathing') projectedScores.b = Math.max(projectedScores.b, targetScore);
+  else if(lowKey==='stability') projectedScores.p = Math.max(projectedScores.p, targetScore);
+  else projectedScores.r = Math.max(projectedScores.r, targetScore);
+  var projectedAcs = calcAdaptiveComposite(projectedScores.b, projectedScores.p, projectedScores.r,
+    R.prevScores ? R.prevScores.b : null, R.prevScores ? R.prevScores.p : null, R.prevScores ? R.prevScores.r : null);
+  var potentialScore = projectedAcs.final;
+  var readinessPct = Math.round((Number(R.overall)||0) * 10);
   var sportMeta = getSportMeta(window._selectedSport || 'general');
   var athleteMeta = (sportMeta && sportMeta.sport !== 'Sport' ? sportMeta.sport : (R.occ || 'Athlete'));
-  var lineSummary = 'Current priority: raise '+domainLabel(lowKey).toLowerCase()+' to unlock a more reliable '+R.overall.toFixed(1)+'/10 performance profile.';
+  var lineSummary = 'Current priority: raise '+domainLabel(lowKey).toLowerCase()+' toward 7.0 to move from '+R.overall.toFixed(1)+' to a projected '+potentialScore.toFixed(1)+'/10 performance profile.';
 
   var css = [
     '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
@@ -5980,6 +6041,11 @@ function generateDashboardV2(){
     '.domain-band{font-size:10px;font-weight:800;color:#AAB7CC;margin-top:5px;}',
     '.bar{height:7px;background:rgba(148,163,184,.17);border-radius:999px;overflow:hidden;margin-top:12px;}',
     '.fill{height:100%;border-radius:999px;}',
+    '.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}',
+    '.metric-card{padding:14px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
+    '.metric-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;}',
+    '.metric-num{font-size:34px;font-weight:950;line-height:1;color:#fff;letter-spacing:-1.7px;}',
+    '.metric-small{font-size:11px;color:#AAB7CC;line-height:1.45;margin-top:7px;}',
     '.stack{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}',
     '.limiter{border-color:rgba(240,78,69,.44);background:linear-gradient(145deg,rgba(127,29,29,.44),rgba(15,23,42,.86));}',
     '.big-title{font-size:20px;font-weight:950;color:#fff;line-height:1.12;letter-spacing:-.5px;margin-bottom:8px;}',
@@ -5998,7 +6064,7 @@ function generateDashboardV2(){
     '.printbar{position:sticky;top:0;z-index:10;background:#0F172A;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(148,163,184,.25);}',
     '.printbar button{background:#2DD4BF;color:#06111F;border:0;border-radius:999px;padding:9px 18px;font-weight:900;cursor:pointer;}',
     '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;padding:9mm;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);page-break-after:always;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:88px}.age-num{font-size:66px}.name{font-size:26px}.plan-title{font-size:21px}}',
-    '@media screen and (max-width:760px){.grid,.stack,.domain-grid,.plan-grid{grid-template-columns:1fr}.score-hero{grid-row:auto}.hero-row{flex-direction:column}.score-num{font-size:82px}}'
+    '@media screen and (max-width:760px){.grid,.stack,.domain-grid,.metric-grid,.plan-grid{grid-template-columns:1fr}.score-hero{grid-row:auto}.hero-row{flex-direction:column}.score-num{font-size:82px}}'
   ].join('\n');
 
   var domains = [
@@ -6039,13 +6105,18 @@ function generateDashboardV2(){
           '<div class="domain-score">'+score.toFixed(1)+'<span style="font-size:13px;color:#64748B">/10</span></div>'+
           '<div class="domain-band">'+sl(score)+'</div><div class="bar"><div class="fill" style="width:'+pct(score)+';background:'+d.accent+'"></div></div></div>';
       }).join('')+'</section>'+
+      '<section class="metric-grid">'+
+        '<div class="metric-card"><div class="label">Target Score</div><div class="metric-row"><div><div class="metric-small">Current Score</div><div class="metric-num">'+currentLimiterScore.toFixed(1)+'</div></div><div><div class="metric-small">Target Score</div><div class="metric-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div></div><div><div class="metric-small">Gap To Target</div><div class="metric-num" style="color:#FDE68A">'+gapToTarget.toFixed(1)+'</div></div></div><div class="metric-small">Target domain: '+domainLabel(lowKey)+'</div></div>'+
+        '<div class="metric-card"><div class="label">Projected Potential</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+R.overall.toFixed(1)+'</div></div><div><div class="metric-small">Potential</div><div class="metric-num" style="color:#7DE8DA">'+potentialScore.toFixed(1)+'</div></div></div><div class="metric-small">Estimate if '+domainLabel(lowKey).toLowerCase()+' reaches 7.0 using the existing composite model.</div></div>'+
+        '<div class="metric-card"><div class="label">Coach Metric</div><div class="metric-small">Performance Readiness</div><div class="metric-num" style="font-size:46px;color:#35A7FF">'+readinessPct+'%</div><div class="metric-small">Overall score converted to a coach-facing readiness percentage.</div></div>'+
+      '</section>'+
       '<section class="stack">'+
         '<div class="card card-pad limiter"><div class="label">Biggest Performance Limiter</div><div class="big-title">'+esc(limiter.title)+'</div><div class="copy">'+esc(limiter.why)+'</div><div class="coach">'+esc(limiter.cue)+'</div></div>'+
         '<div class="card card-pad impact"><div class="label">Match-Day Impact</div><div class="big-title">'+domainIcon(lowKey)+' '+domainLabel(lowKey)+' shows up under fatigue</div><div class="copy">'+esc(matchImpact(lowKey,R.overall))+'</div></div>'+
       '</section>'+
       '<section class="summary">One-Line Summary · '+esc(lineSummary)+'</section>'+
-      '<section class="card plan"><div class="plan-head"><div><div class="label">30-Day Action Plan</div><div class="plan-title">Train the limiter. Re-test the response.</div></div><div class="pill">Target: '+domainLabel(lowKey)+'</div></div>'+
-        '<div class="plan-grid">'+plan.map(function(p){return '<div class="plan-step"><div class="day">'+esc(p.d)+'</div><div class="step-title">'+esc(p.t)+'</div><div class="step-copy">'+esc(p.x)+'</div></div>';}).join('')+'</div>'+
+      '<section class="card plan"><div class="plan-head"><div><div class="label">Your Next 3 Actions</div><div class="plan-title">Behavioural coaching priorities from your assessment.</div></div><div class="pill">Target: '+domainLabel(lowKey)+'</div></div>'+
+        '<div class="plan-grid">'+plan.map(function(p){return '<div class="plan-step"><div class="day">'+esc(p.d)+'</div><div class="step-title">'+esc(p.t)+'</div><div class="step-copy" style="color:#EAF0FF;font-weight:800;margin-bottom:7px;">'+esc(p.dose)+'</div><div class="step-copy"><strong style="color:#7DE8DA">Expected benefit:</strong> '+esc(p.x)+'</div></div>';}).join('')+'</div>'+
       '</section>'+
     '</div></main></body></html>';
 
