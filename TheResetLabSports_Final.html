@@ -5915,27 +5915,27 @@ function generateDashboardV2(){
   }
   function interventionBenefit(title, key){
     var lookup = {
-      'Crocodile Breathing':'Improve diaphragmatic patterning and reduce chest-dominant breathing effort.',
-      'Box Breathing':'Improve breath control under pressure and support calmer recovery between efforts.',
-      'Breath Hold Training':'Improve CO₂ tolerance and the ability to stay composed during high-intensity work.',
-      'Cadence Breathing':'Improve rhythm, autonomic regulation, and repeat-effort recovery.',
-      'Nasal Breath Training':'Improve resting airflow control and reduce unnecessary mouth-breathing effort.',
-      'Post-Activity Recovery Breath':'Improve post-effort downshift and shorten breathing recovery time.',
-      'Bulgarian Split Squat':'Improve single-leg stability and push-off strength.',
-      'Lateral Band Walk':'Improve lateral movement control and hip stability.',
-      'Single Leg Balance':'Improve ankle stability, balance confidence, and landing control.',
-      'Deep Neck Flexor Training':'Improve neck endurance and head-position control under fatigue.',
-      'Calf Raise Progression':'Improve lower-leg capacity, ankle stiffness, and repeat push-off strength.',
-      'Sleep Hygiene Reset':'Improve sleep consistency and overnight recovery quality.',
-      'HRV Breathing Protocol':'Improve parasympathetic recovery and readiness regulation.',
-      'Strategic Rest Scheduling':'Improve adaptation by matching training load to recovery capacity.',
-      'Stress-Tension Release':'Reduce unnecessary muscular tension and improve relaxation response.'
+      'Crocodile Breathing':'Helps you stay calmer between efforts and avoid early breathlessness under pressure.',
+      'Box Breathing':'Helps you reset faster after intense passages and make clearer decisions under fatigue.',
+      'Breath Hold Training':'Helps you tolerate hard efforts without panicking or losing rhythm late in play.',
+      'Cadence Breathing':'Helps you recover between repeated sprints, rallies, or sets with less visible fatigue.',
+      'Nasal Breath Training':'Builds a quieter recovery baseline so you start drills and matches less rushed.',
+      'Post-Activity Recovery Breath':'Helps bring breathing down quicker after hard blocks so the next effort starts cleaner.',
+      'Bulgarian Split Squat':'Improves single-leg drive so acceleration, take-off, and direction changes feel stronger.',
+      'Lateral Band Walk':'Improves side-to-side control for sharper court coverage, cutting, and defensive movement.',
+      'Single Leg Balance':'Improves landing confidence and ankle control when changing direction or absorbing contact.',
+      'Deep Neck Flexor Training':'Helps hold posture and visual focus when fatigue would normally pull the head forward.',
+      'Calf Raise Progression':'Improves repeat push-off capacity for sprinting, jumping, and staying springy late.',
+      'Sleep Hygiene Reset':'Improves next-day energy so training quality does not drop from poor recovery.',
+      'HRV Breathing Protocol':'Helps the nervous system downshift so you arrive at the next session more ready.',
+      'Strategic Rest Scheduling':'Helps prevent flat sessions by giving the body enough time to absorb training load.',
+      'Stress-Tension Release':'Helps reduce tightness so movement feels freer and less guarded during performance.'
     };
     var lookupKey = Object.keys(lookup).filter(function(k){ return k.toLowerCase()===String(title).toLowerCase(); })[0];
     if(lookupKey) return lookup[lookupKey];
-    if(key==='breathing') return 'Improve breathing efficiency, recovery control, and repeat-effort composure.';
-    if(key==='stability') return 'Improve movement quality, force transfer, and fatigue-resistant mechanics.';
-    return 'Improve readiness, adaptation, and consistency between training sessions.';
+    if(key==='breathing') return 'Helps you recover faster between efforts and keep breathing under control when intensity rises.';
+    if(key==='stability') return 'Helps you move with better control, cleaner force transfer, and fewer breakdowns under fatigue.';
+    return 'Helps you show up fresher and keep performance more consistent across sessions.';
   }
   function actionDose(title, raw, key){
     var lower = title.toLowerCase();
@@ -5958,13 +5958,12 @@ function generateDashboardV2(){
     raw = String(raw || '');
     var title = raw.split(/\s[-–—]\s/)[0].split('.')[0].trim();
     if(title.length>42) title = title.replace(/\s+(protocol|training|drills|practice)$/i,'');
-    var benefitText = raw.indexOf('.')>-1 ? raw.split('.').slice(1).join('.').trim() : '';
     var displayTitle = title ? title.split(' ').map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ') : ('Action '+(idx+1));
     return {
       d:'Action '+(idx+1),
       t:displayTitle,
       dose:actionDose(title, raw, key),
-      x:benefitText || interventionBenefit(title, key)
+      x:interventionBenefit(title, key)
     };
   }
   function nextActions(key){
@@ -6004,16 +6003,21 @@ function generateDashboardV2(){
   var readinessPct = Math.round((Number(R.overall)||0) * 10);
   var sportMeta = getSportMeta(window._selectedSport || 'general');
   var athleteMeta = (sportMeta && sportMeta.sport !== 'Sport' ? sportMeta.sport : (R.occ || 'Athlete'));
-  var lineSummary = 'Current priority: raise '+domainLabel(lowKey).toLowerCase()+' toward 7.0 to move from '+R.overall.toFixed(1)+' to a projected '+potentialScore.toFixed(1)+'/10 performance profile.';
+  function coachSummary(key){
+    if(key==='breathing') return 'Your breathing is the limiter right now, so repeated efforts may feel harder than they should. Prioritize breath control first so your body can reset faster between plays.';
+    if(key==='stability') return 'Your stability is the limiter right now, so mechanics may break down when speed, fatigue, or direction changes increase. Prioritize clean single-leg control before adding more intensity.';
+    return 'Your recovery is the limiter right now, so performance may swing from session to session. Prioritize sleep, downshifting, and load management so training starts from a fresher baseline.';
+  }
+  var lineSummary = coachSummary(lowKey);
 
   var css = [
     '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
     '*{box-sizing:border-box;margin:0;padding:0;}',
     'body{font-family:"Inter",Arial,sans-serif;background:#0B1020;color:#EAF0FF;-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
-    '.dash-page{width:100%;min-height:100vh;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);padding:22px;}',
+    '.dash-page{width:100%;min-height:100vh;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);padding:18px;}',
     '.shell{max-width:980px;margin:0 auto;}',
-    '.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:1.8px;font-weight:800;}',
-    '.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;}',
+    '.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#94A3B8;font-size:10px;text-transform:uppercase;letter-spacing:1.6px;font-weight:800;}',
+    '.grid{display:grid;grid-template-columns:1.35fr .65fr;gap:12px;}',
     '.card{background:rgba(15,23,42,.86);border:1px solid rgba(148,163,184,.22);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.24);position:relative;overflow:hidden;}',
     '.card-pad{padding:18px;}',
     '.label{font-size:10px;text-transform:uppercase;letter-spacing:1.7px;color:#93A4BD;font-weight:900;margin-bottom:8px;}',
@@ -6021,51 +6025,51 @@ function generateDashboardV2(){
     '.name{font-size:29px;line-height:1;font-weight:900;letter-spacing:-1.2px;color:#fff;margin-bottom:8px;}',
     '.meta{font-size:12px;color:#B8C3D6;line-height:1.7;}',
     '.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(45,212,191,.35);background:rgba(45,212,191,.10);color:#7DE8DA;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;white-space:nowrap;}',
-    '.score-hero{grid-row:span 2;padding:22px;background:linear-gradient(150deg,rgba(12,21,38,.96),rgba(19,31,52,.96));}',
+    '.score-hero{padding:20px;background:linear-gradient(150deg,rgba(12,21,38,.96),rgba(19,31,52,.96));}',
     '.hero-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}',
-    '.score-num{font-size:98px;font-weight:950;letter-spacing:-7px;line-height:.86;color:#fff;}',
+    '.score-num{font-size:88px;font-weight:950;letter-spacing:-6px;line-height:.86;color:#fff;}',
     '.score-den{font-size:24px;color:#64748B;letter-spacing:-1px;margin-left:3px;}',
     '.band{display:inline-block;background:'+sc(R.overall)+';color:#08111F;border-radius:999px;padding:7px 12px;font-size:11px;font-weight:900;margin-top:10px;}',
-    '.score-sub{font-size:13px;color:#AAB7CC;line-height:1.55;max-width:390px;margin-top:13px;}',
-    '.ring{width:122px;height:122px;border-radius:50%;background:conic-gradient('+sc(R.overall)+' '+pct(R.overall)+',rgba(148,163,184,.16) 0);display:flex;align-items:center;justify-content:center;box-shadow:0 0 42px '+sc(R.overall)+'30;flex-shrink:0;}',
-    '.ring::after{content:"";width:82px;height:82px;border-radius:50%;background:#101827;border:1px solid rgba(148,163,184,.18);}',
-    '.body-age{padding:20px;background:linear-gradient(145deg,rgba(49,46,129,.92),rgba(14,165,233,.24));}',
-    '.age-num{font-size:72px;font-weight:950;line-height:.88;letter-spacing:-4px;color:#fff;}',
+    '.score-sub{font-size:12px;color:#AAB7CC;line-height:1.45;max-width:390px;margin-top:10px;}',
+    '.ring{width:104px;height:104px;border-radius:50%;background:conic-gradient('+sc(R.overall)+' '+pct(R.overall)+',rgba(148,163,184,.16) 0);display:flex;align-items:center;justify-content:center;box-shadow:0 0 42px '+sc(R.overall)+'30;flex-shrink:0;}',
+    '.ring::after{content:"";width:68px;height:68px;border-radius:50%;background:#101827;border:1px solid rgba(148,163,184,.18);}',
+    '.body-age{padding:18px;background:linear-gradient(145deg,rgba(49,46,129,.92),rgba(14,165,233,.24));}',
+    '.age-num{font-size:64px;font-weight:950;line-height:.88;letter-spacing:-4px;color:#fff;}',
     '.age-unit{font-size:18px;color:#BFDBFE;font-weight:800;margin-left:5px;}',
     '.age-status{margin-top:10px;font-size:13px;font-weight:800;color:#E0F2FE;}',
     '.age-delta{font-size:12px;color:#B8C3D6;margin-top:6px;line-height:1.5;}',
-    '.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}',
-    '.domain-card{padding:14px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
+    '.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;}',
+    '.domain-card{padding:12px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
     '.domain-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;font-weight:900;color:#fff;}',
     '.domain-score{font-size:34px;line-height:1;font-weight:950;color:#fff;letter-spacing:-1.7px;}',
     '.domain-band{font-size:10px;font-weight:800;color:#AAB7CC;margin-top:5px;}',
     '.bar{height:7px;background:rgba(148,163,184,.17);border-radius:999px;overflow:hidden;margin-top:12px;}',
     '.fill{height:100%;border-radius:999px;}',
-    '.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}',
-    '.metric-card{padding:14px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
+    '.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;}',
+    '.metric-card{padding:10px;border-radius:16px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
     '.metric-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;}',
-    '.metric-num{font-size:34px;font-weight:950;line-height:1;color:#fff;letter-spacing:-1.7px;}',
-    '.metric-small{font-size:11px;color:#AAB7CC;line-height:1.45;margin-top:7px;}',
-    '.stack{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}',
+    '.metric-num{font-size:25px;font-weight:950;line-height:1;color:#fff;letter-spacing:-1.2px;}',
+    '.metric-small{font-size:9.5px;color:#AAB7CC;line-height:1.35;margin-top:5px;}',
+    '.stack{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;}',
     '.limiter{border-color:rgba(240,78,69,.44);background:linear-gradient(145deg,rgba(127,29,29,.44),rgba(15,23,42,.86));}',
-    '.big-title{font-size:20px;font-weight:950;color:#fff;line-height:1.12;letter-spacing:-.5px;margin-bottom:8px;}',
-    '.copy{font-size:12.5px;color:#C6D1E3;line-height:1.6;}',
+    '.big-title{font-size:23px;font-weight:950;color:#fff;line-height:1.12;letter-spacing:-.5px;margin-bottom:8px;}',
+    '.copy{font-size:13.5px;color:#C6D1E3;line-height:1.55;}',
     '.coach{margin-top:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:10px 12px;font-size:12px;font-weight:800;color:#FDE68A;}',
     '.impact{border-color:rgba(53,167,255,.40);}',
-    '.summary{margin-top:14px;padding:15px 18px;border-radius:18px;background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.32);font-size:16px;font-weight:900;color:#DFFFFB;line-height:1.35;}',
-    '.plan{margin-top:14px;padding:18px;}',
-    '.plan-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;margin-bottom:13px;}',
-    '.plan-title{font-size:23px;font-weight:950;letter-spacing:-.8px;color:#fff;}',
-    '.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}',
-    '.plan-step{background:rgba(255,255,255,.06);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:13px;}',
+    '.summary{margin-top:10px;padding:12px 16px;border-radius:18px;background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.32);font-size:14px;font-weight:900;color:#DFFFFB;line-height:1.35;}',
+    '.plan{margin-top:10px;padding:14px;}',
+    '.plan-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-end;margin-bottom:10px;}',
+    '.plan-title{font-size:20px;font-weight:950;letter-spacing:-.6px;color:#fff;}',
+    '.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
+    '.plan-step{background:rgba(255,255,255,.06);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:11px;}',
     '.day{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:#7DE8DA;font-weight:950;margin-bottom:8px;}',
     '.step-title{font-size:14px;font-weight:950;color:#fff;margin-bottom:7px;line-height:1.2;}',
     '.step-copy{font-size:11.5px;color:#B8C3D6;line-height:1.5;}',
-    '.summary,.plan,.plan-step,.limiter,.impact,.metric-card,.metric-grid,.stack{page-break-inside:avoid;break-inside:avoid;-webkit-column-break-inside:avoid;}',
-    '.summary,.plan,.limiter,.impact,.metric-card,.metric-grid,.stack{page-break-before:auto;break-before:auto;}',
+    '.card,.domain-card,.summary,.plan,.plan-step,.limiter,.impact,.metric-card,.metric-grid,.stack,.grid,.domain-grid{page-break-inside:avoid;break-inside:avoid;-webkit-column-break-inside:avoid;}',
+    '.card,.domain-card,.summary,.plan,.limiter,.impact,.metric-card,.metric-grid,.stack,.grid,.domain-grid{page-break-before:auto;break-before:auto;}',
     '.printbar{position:sticky;top:0;z-index:10;background:#0F172A;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(148,163,184,.25);}',
     '.printbar button{background:#2DD4BF;color:#06111F;border:0;border-radius:999px;padding:9px 18px;font-weight:900;cursor:pointer;}',
-    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;padding:9mm;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);page-break-after:always;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:88px}.age-num{font-size:66px}.name{font-size:26px}.plan-title{font-size:21px}}',
+    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;padding:7mm;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);page-break-after:always;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:78px}.age-num{font-size:58px}.name{font-size:24px}.plan-title{font-size:18px}.metric-grid{page-break-before:auto;break-before:auto}}',
     '@media screen and (max-width:760px){.grid,.stack,.domain-grid,.metric-grid,.plan-grid{grid-template-columns:1fr}.score-hero{grid-row:auto}.hero-row{flex-direction:column}.score-num{font-size:82px}}'
   ].join('\n');
 
@@ -6083,15 +6087,10 @@ function generateDashboardV2(){
     '<main class="dash-page"><div class="shell">'+
       '<div class="topbar"><span>The Reset Lab Sports · Athlete Dashboard V2</span><span>'+esc(R.date || new Date().toLocaleDateString())+'</span></div>'+
       '<section class="grid">'+
-        '<div class="card card-pad athlete">'+
-          '<div><div class="label">Athlete Card</div><div class="name">'+esc(R.name)+'</div>'+
-          '<div class="meta">Age '+esc(R.age || '—')+' · '+esc(athleteMeta)+'<br>Assessment ID '+esc(R.assessmentID || '—')+'</div></div>'+
-          '<div class="pill">⚡ Performance profile</div>'+
-        '</div>'+
         '<div class="card score-hero">'+
           '<div class="label">Overall Score Hero</div>'+
           '<div class="hero-row"><div><div><span class="score-num">'+R.overall.toFixed(1)+'</span><span class="score-den">/10</span></div>'+
-          '<div class="band">'+sl(R.overall)+'</div><div class="score-sub">Composite readiness across breathing, stability, and recovery. Weakest domain: <strong style="color:#fff">'+esc(R.weakDomain || domainLabel(lowKey))+'</strong>.</div></div>'+
+          '<div class="band">'+sl(R.overall)+'</div><div class="score-sub">'+esc(R.name)+' · '+esc(athleteMeta)+' · Weakest domain: <strong style="color:#fff">'+esc(R.weakDomain || domainLabel(lowKey))+'</strong>.</div></div>'+
           '<div class="ring" aria-label="Overall score '+R.overall.toFixed(1)+' out of 10"></div></div>'+
         '</div>'+
         '<div class="card body-age">'+
@@ -6107,11 +6106,6 @@ function generateDashboardV2(){
           '<div class="domain-score">'+score.toFixed(1)+'<span style="font-size:13px;color:#64748B">/10</span></div>'+
           '<div class="domain-band">'+sl(score)+'</div><div class="bar"><div class="fill" style="width:'+pct(score)+';background:'+d.accent+'"></div></div></div>';
       }).join('')+'</section>'+
-      '<section class="metric-grid">'+
-        '<div class="metric-card"><div class="label">Target Score</div><div class="metric-row"><div><div class="metric-small">Current Score</div><div class="metric-num">'+currentLimiterScore.toFixed(1)+'</div></div><div><div class="metric-small">Target Score</div><div class="metric-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div></div><div><div class="metric-small">Gap To Target</div><div class="metric-num" style="color:#FDE68A">'+gapToTarget.toFixed(1)+'</div></div></div><div class="metric-small">Target domain: '+domainLabel(lowKey)+'</div></div>'+
-        '<div class="metric-card"><div class="label">Projected Potential</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+R.overall.toFixed(1)+'</div></div><div><div class="metric-small">Potential</div><div class="metric-num" style="color:#7DE8DA">'+potentialScore.toFixed(1)+'</div></div></div><div class="metric-small">Estimate if '+domainLabel(lowKey).toLowerCase()+' reaches 7.0 using the existing composite model.</div></div>'+
-        '<div class="metric-card"><div class="label">Coach Metric</div><div class="metric-small">Performance Readiness</div><div class="metric-num" style="font-size:46px;color:#35A7FF">'+readinessPct+'%</div><div class="metric-small">Overall score converted to a coach-facing readiness percentage.</div></div>'+
-      '</section>'+
       '<section class="stack">'+
         '<div class="card card-pad limiter"><div class="label">Biggest Performance Limiter</div><div class="big-title">'+esc(limiter.title)+'</div><div class="copy">'+esc(limiter.why)+'</div><div class="coach">'+esc(limiter.cue)+'</div></div>'+
         '<div class="card card-pad impact"><div class="label">Match-Day Impact</div><div class="big-title">'+domainIcon(lowKey)+' '+domainLabel(lowKey)+' shows up under fatigue</div><div class="copy">'+esc(matchImpact(lowKey,R.overall))+'</div></div>'+
@@ -6119,6 +6113,11 @@ function generateDashboardV2(){
       '<section class="summary">One-Line Summary · '+esc(lineSummary)+'</section>'+
       '<section class="card plan"><div class="plan-head"><div><div class="label">Your Next 3 Actions</div><div class="plan-title">Behavioural coaching priorities from your assessment.</div></div><div class="pill">Target: '+domainLabel(lowKey)+'</div></div>'+
         '<div class="plan-grid">'+plan.map(function(p){return '<div class="plan-step"><div class="day">'+esc(p.d)+'</div><div class="step-title">'+esc(p.t)+'</div><div class="step-copy" style="color:#EAF0FF;font-weight:800;margin-bottom:7px;">'+esc(p.dose)+'</div><div class="step-copy"><strong style="color:#7DE8DA">Expected benefit:</strong> '+esc(p.x)+'</div></div>';}).join('')+'</div>'+
+      '</section>'+
+      '<section class="metric-grid">'+
+        '<div class="metric-card"><div class="label">Target Score</div><div class="metric-row"><div><div class="metric-small">Current Score</div><div class="metric-num">'+currentLimiterScore.toFixed(1)+'</div></div><div><div class="metric-small">Target Score</div><div class="metric-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div></div><div><div class="metric-small">Gap To Target</div><div class="metric-num" style="color:#FDE68A">'+gapToTarget.toFixed(1)+'</div></div></div><div class="metric-small">Target domain: '+domainLabel(lowKey)+'</div></div>'+
+        '<div class="metric-card"><div class="label">Projected Potential</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+R.overall.toFixed(1)+'</div></div><div><div class="metric-small">Potential</div><div class="metric-num" style="color:#7DE8DA">'+potentialScore.toFixed(1)+'</div></div></div><div class="metric-small">Estimate if '+domainLabel(lowKey).toLowerCase()+' reaches 7.0 using the existing composite model.</div></div>'+
+        '<div class="metric-card"><div class="label">Coach Metric</div><div class="metric-small">Performance Readiness</div><div class="metric-num" style="font-size:36px;color:#35A7FF">'+readinessPct+'%</div><div class="metric-small">Overall score converted to a coach-facing readiness percentage.</div></div>'+
       '</section>'+
     '</div></main></body></html>';
 
