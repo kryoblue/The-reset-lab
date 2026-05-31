@@ -5913,7 +5913,7 @@ function generateDashboardV2(){
     if(key==='stability') return (R.P && R.P.ints) ? R.P.ints : [];
     return (R.R && R.R.ints) ? R.R.ints : [];
   }
-  function interventionBenefit(title, key){
+  function interventionBenefit(title, key, idx){
     var lookup = {
       'Crocodile Breathing':'Helps you stay calmer between efforts and avoid early breathlessness under pressure.',
       'Box Breathing':'Helps you reset faster after intense passages and make clearer decisions under fatigue.',
@@ -5932,10 +5932,12 @@ function generateDashboardV2(){
       'Stress-Tension Release':'Helps reduce tightness so movement feels freer and less guarded during performance.'
     };
     var lookupKey = Object.keys(lookup).filter(function(k){ return k.toLowerCase()===String(title).toLowerCase(); })[0];
-    if(lookupKey) return lookup[lookupKey];
-    if(key==='breathing') return 'Helps you recover faster between efforts and keep breathing under control when intensity rises.';
-    if(key==='stability') return 'Helps you move with better control, cleaner force transfer, and fewer breakdowns under fatigue.';
-    return 'Helps you show up fresher and keep performance more consistent across sessions.';
+    var base = lookupKey ? lookup[lookupKey]
+      : key==='breathing' ? 'Helps you recover faster between efforts and keep breathing under control when intensity rises.'
+      : key==='stability' ? 'Helps you move with better control, cleaner force transfer, and fewer breakdowns under fatigue.'
+      : 'Helps you show up fresher and keep performance more consistent across sessions.';
+    var focus = idx===0 ? 'Better opening intensity.' : idx===1 ? 'More consistent middle-session output.' : 'Stronger execution when fatigue builds.';
+    return base + ' ' + focus;
   }
   function actionDose(title, raw, key){
     var lower = title.toLowerCase();
@@ -5963,7 +5965,7 @@ function generateDashboardV2(){
       d:'Action '+(idx+1),
       t:displayTitle,
       dose:actionDose(title, raw, key),
-      x:interventionBenefit(title, key)
+      x:interventionBenefit(title, key, idx)
     };
   }
   function nextActions(key){
@@ -6014,62 +6016,62 @@ function generateDashboardV2(){
     '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
     '*{box-sizing:border-box;margin:0;padding:0;}',
     'body{font-family:"Inter",Arial,sans-serif;background:#0B1020;color:#EAF0FF;-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
-    '.dash-page{width:100%;min-height:100vh;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);padding:18px;}',
+    '.dash-page{width:100%;min-height:100vh;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);padding:16px;}',
     '.shell{max-width:980px;margin:0 auto;}',
     '.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#94A3B8;font-size:10px;text-transform:uppercase;letter-spacing:1.6px;font-weight:800;}',
-    '.grid{display:grid;grid-template-columns:1.35fr .65fr;gap:12px;}',
-    '.card{background:rgba(15,23,42,.86);border:1px solid rgba(148,163,184,.22);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.24);position:relative;overflow:hidden;}',
-    '.card-pad{padding:18px;}',
+    '.grid{display:grid;grid-template-columns:1.45fr .55fr;gap:10px;}',
+    '.card{background:rgba(15,23,42,.86);border:1px solid rgba(148,163,184,.22);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.24);position:relative;overflow:hidden;}',
+    '.card-pad{padding:16px;}',
     '.label{font-size:10px;text-transform:uppercase;letter-spacing:1.7px;color:#93A4BD;font-weight:900;margin-bottom:8px;}',
     '.athlete{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}',
     '.name{font-size:29px;line-height:1;font-weight:900;letter-spacing:-1.2px;color:#fff;margin-bottom:8px;}',
     '.meta{font-size:12px;color:#B8C3D6;line-height:1.7;}',
     '.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(45,212,191,.35);background:rgba(45,212,191,.10);color:#7DE8DA;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;white-space:nowrap;}',
-    '.score-hero{padding:20px;background:linear-gradient(150deg,rgba(12,21,38,.96),rgba(19,31,52,.96));}',
+    '.score-hero{padding:24px;background:linear-gradient(150deg,rgba(12,21,38,.98),rgba(24,38,64,.98));border:1.5px solid rgba(45,212,191,.42);box-shadow:0 0 58px rgba(45,212,191,.16);}',
     '.hero-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}',
-    '.score-num{font-size:88px;font-weight:950;letter-spacing:-6px;line-height:.86;color:#fff;}',
-    '.score-den{font-size:24px;color:#64748B;letter-spacing:-1px;margin-left:3px;}',
+    '.score-num{font-size:104px;font-weight:950;letter-spacing:-7px;line-height:.82;color:#fff;}',
+    '.score-den{font-size:28px;color:#64748B;letter-spacing:-1px;margin-left:3px;}',
     '.band{display:inline-block;background:'+sc(R.overall)+';color:#08111F;border-radius:999px;padding:7px 12px;font-size:11px;font-weight:900;margin-top:10px;}',
     '.score-sub{font-size:12px;color:#AAB7CC;line-height:1.45;max-width:390px;margin-top:10px;}',
-    '.ring{width:104px;height:104px;border-radius:50%;background:conic-gradient('+sc(R.overall)+' '+pct(R.overall)+',rgba(148,163,184,.16) 0);display:flex;align-items:center;justify-content:center;box-shadow:0 0 42px '+sc(R.overall)+'30;flex-shrink:0;}',
-    '.ring::after{content:"";width:68px;height:68px;border-radius:50%;background:#101827;border:1px solid rgba(148,163,184,.18);}',
-    '.body-age{padding:18px;background:linear-gradient(145deg,rgba(49,46,129,.92),rgba(14,165,233,.24));}',
-    '.age-num{font-size:64px;font-weight:950;line-height:.88;letter-spacing:-4px;color:#fff;}',
+    '.ring{width:118px;height:118px;border-radius:50%;background:conic-gradient('+sc(R.overall)+' '+pct(R.overall)+',rgba(148,163,184,.16) 0);display:flex;align-items:center;justify-content:center;box-shadow:0 0 42px '+sc(R.overall)+'30;flex-shrink:0;}',
+    '.ring::after{content:"";width:78px;height:78px;border-radius:50%;background:#101827;border:1px solid rgba(148,163,184,.18);}',
+    '.body-age{padding:14px 16px;background:linear-gradient(145deg,rgba(49,46,129,.92),rgba(14,165,233,.24));}',
+    '.age-num{font-size:55px;font-weight:950;line-height:.84;letter-spacing:-3px;color:#fff;}',
     '.age-unit{font-size:18px;color:#BFDBFE;font-weight:800;margin-left:5px;}',
-    '.age-status{margin-top:10px;font-size:13px;font-weight:800;color:#E0F2FE;}',
-    '.age-delta{font-size:12px;color:#B8C3D6;margin-top:6px;line-height:1.5;}',
-    '.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;}',
-    '.domain-card{padding:12px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
-    '.domain-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;font-weight:900;color:#fff;}',
-    '.domain-score{font-size:34px;line-height:1;font-weight:950;color:#fff;letter-spacing:-1.7px;}',
+    '.age-status{margin-top:7px;font-size:12px;font-weight:800;color:#E0F2FE;}',
+    '.age-delta{font-size:10.5px;color:#B8C3D6;margin-top:4px;line-height:1.35;}',
+    '.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}',
+    '.domain-card{padding:10px;border-radius:16px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
+    '.domain-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;font-weight:900;color:#fff;}',
+    '.domain-score{font-size:29px;line-height:1;font-weight:950;color:#fff;letter-spacing:-1.3px;}',
     '.domain-band{font-size:10px;font-weight:800;color:#AAB7CC;margin-top:5px;}',
-    '.bar{height:7px;background:rgba(148,163,184,.17);border-radius:999px;overflow:hidden;margin-top:12px;}',
+    '.bar{height:6px;background:rgba(148,163,184,.17);border-radius:999px;overflow:hidden;margin-top:8px;}',
     '.fill{height:100%;border-radius:999px;}',
-    '.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;}',
-    '.metric-card{padding:10px;border-radius:16px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
-    '.metric-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;}',
-    '.metric-num{font-size:25px;font-weight:950;line-height:1;color:#fff;letter-spacing:-1.2px;}',
-    '.metric-small{font-size:9.5px;color:#AAB7CC;line-height:1.35;margin-top:5px;}',
-    '.stack{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;}',
+    '.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}',
+    '.metric-card{padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(148,163,184,.16);min-width:0;}',
+    '.metric-row{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;min-width:0;}',
+    '.metric-num{font-size:20px;font-weight:950;line-height:1;color:#fff;letter-spacing:-.8px;white-space:nowrap;}',
+    '.metric-small{font-size:8.4px;color:#AAB7CC;line-height:1.25;margin-top:3px;overflow-wrap:normal;word-break:normal;}',
+    '.stack{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}',
     '.limiter{border-color:rgba(240,78,69,.44);background:linear-gradient(145deg,rgba(127,29,29,.44),rgba(15,23,42,.86));}',
-    '.big-title{font-size:23px;font-weight:950;color:#fff;line-height:1.12;letter-spacing:-.5px;margin-bottom:8px;}',
-    '.copy{font-size:13.5px;color:#C6D1E3;line-height:1.55;}',
-    '.coach{margin-top:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:10px 12px;font-size:12px;font-weight:800;color:#FDE68A;}',
+    '.big-title{font-size:21px;font-weight:950;color:#fff;line-height:1.1;letter-spacing:-.5px;margin-bottom:6px;}',
+    '.copy{font-size:12.3px;color:#C6D1E3;line-height:1.42;}',
+    '.coach{margin-top:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:8px 10px;font-size:11px;font-weight:800;color:#FDE68A;}',
     '.impact{border-color:rgba(53,167,255,.40);}',
-    '.summary{margin-top:10px;padding:12px 16px;border-radius:18px;background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.32);font-size:14px;font-weight:900;color:#DFFFFB;line-height:1.35;}',
-    '.plan{margin-top:10px;padding:14px;}',
-    '.plan-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-end;margin-bottom:10px;}',
-    '.plan-title{font-size:20px;font-weight:950;letter-spacing:-.6px;color:#fff;}',
+    '.summary{margin-top:8px;padding:9px 13px;border-radius:16px;background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.32);font-size:12.2px;font-weight:900;color:#DFFFFB;line-height:1.25;}',
+    '.plan{margin-top:8px;padding:11px;}',
+    '.plan-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-end;margin-bottom:8px;}',
+    '.plan-title{font-size:17px;font-weight:950;letter-spacing:-.4px;color:#fff;}',
     '.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
-    '.plan-step{background:rgba(255,255,255,.06);border:1px solid rgba(148,163,184,.18);border-radius:16px;padding:11px;}',
-    '.day{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:#7DE8DA;font-weight:950;margin-bottom:8px;}',
-    '.step-title{font-size:14px;font-weight:950;color:#fff;margin-bottom:7px;line-height:1.2;}',
-    '.step-copy{font-size:11.5px;color:#B8C3D6;line-height:1.5;}',
+    '.plan-step{background:rgba(255,255,255,.06);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:9px;}',
+    '.day{font-size:9px;text-transform:uppercase;letter-spacing:1.1px;color:#7DE8DA;font-weight:950;margin-bottom:5px;}',
+    '.step-title{font-size:12.5px;font-weight:950;color:#fff;margin-bottom:5px;line-height:1.15;}',
+    '.step-copy{font-size:9.8px;color:#B8C3D6;line-height:1.28;}',
     '.card,.domain-card,.summary,.plan,.plan-step,.limiter,.impact,.metric-card,.metric-grid,.stack,.grid,.domain-grid{page-break-inside:avoid;break-inside:avoid;-webkit-column-break-inside:avoid;}',
     '.card,.domain-card,.summary,.plan,.limiter,.impact,.metric-card,.metric-grid,.stack,.grid,.domain-grid{page-break-before:auto;break-before:auto;}',
     '.printbar{position:sticky;top:0;z-index:10;background:#0F172A;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(148,163,184,.25);}',
     '.printbar button{background:#2DD4BF;color:#06111F;border:0;border-radius:999px;padding:9px 18px;font-weight:900;cursor:pointer;}',
-    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;padding:7mm;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);page-break-after:always;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:78px}.age-num{font-size:58px}.name{font-size:24px}.plan-title{font-size:18px}.metric-grid{page-break-before:auto;break-before:auto}}',
+    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;max-height:297mm;overflow:hidden;padding:5mm;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);page-break-after:always;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:96px}.age-num{font-size:50px}.plan-title{font-size:16px}.metric-grid{page-break-before:auto;break-before:auto}.metric-small{font-size:8px}.metric-num{font-size:18px}.step-copy{font-size:9.2px}}',
     '@media screen and (max-width:760px){.grid,.stack,.domain-grid,.metric-grid,.plan-grid{grid-template-columns:1fr}.score-hero{grid-row:auto}.hero-row{flex-direction:column}.score-num{font-size:82px}}'
   ].join('\n');
 
@@ -6116,8 +6118,8 @@ function generateDashboardV2(){
       '</section>'+
       '<section class="metric-grid">'+
         '<div class="metric-card"><div class="label">Target Score</div><div class="metric-row"><div><div class="metric-small">Current Score</div><div class="metric-num">'+currentLimiterScore.toFixed(1)+'</div></div><div><div class="metric-small">Target Score</div><div class="metric-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div></div><div><div class="metric-small">Gap To Target</div><div class="metric-num" style="color:#FDE68A">'+gapToTarget.toFixed(1)+'</div></div></div><div class="metric-small">Target domain: '+domainLabel(lowKey)+'</div></div>'+
-        '<div class="metric-card"><div class="label">Projected Potential</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+R.overall.toFixed(1)+'</div></div><div><div class="metric-small">Potential</div><div class="metric-num" style="color:#7DE8DA">'+potentialScore.toFixed(1)+'</div></div></div><div class="metric-small">Estimate if '+domainLabel(lowKey).toLowerCase()+' reaches 7.0 using the existing composite model.</div></div>'+
-        '<div class="metric-card"><div class="label">Coach Metric</div><div class="metric-small">Performance Readiness</div><div class="metric-num" style="font-size:36px;color:#35A7FF">'+readinessPct+'%</div><div class="metric-small">Overall score converted to a coach-facing readiness percentage.</div></div>'+
+        '<div class="metric-card"><div class="label">Projected Potential</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+R.overall.toFixed(1)+'</div></div><div><div class="metric-small">Potential</div><div class="metric-num" style="color:#7DE8DA">'+potentialScore.toFixed(1)+'</div></div></div><div class="metric-small">If '+domainLabel(lowKey).toLowerCase()+' reaches 7.0.</div></div>'+
+        '<div class="metric-card"><div class="label">Coach Metric</div><div class="metric-small">Performance Readiness</div><div class="metric-num" style="font-size:22px;color:#35A7FF;white-space:nowrap;">'+readinessPct+'%</div><div class="metric-small">Overall score as readiness %.</div></div>'+
       '</section>'+
     '</div></main></body></html>';
 
