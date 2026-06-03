@@ -5872,7 +5872,7 @@ function generateDashboardV2(){
       .replace(/"/g,'&quot;')
       .replace(/'/g,'&#39;');
   }
-  function sc(s){if(s>=9.5)return'#18D27B';if(s>=8.5)return'#33C481';if(s>=7.0)return'#35A7FF';if(s>=5.5)return'#F5B942';if(s>=4.0)return'#FF7A2F';return'#F04E45';}
+  function sc(s){if(s>=7.0)return'#159E5C';if(s>=5.5)return'#F59E0B';return'#E40521';}
   function sl(s){if(s>=9.5)return'Peak Regulation';if(s>=8.5)return'Efficient Regulation';if(s>=7.0)return'Active Optimization';if(s>=5.5)return'Functional Compensation';if(s>=4.0)return'Functional Strain';return'System Dysfunction';}
   function pct(s){return Math.max(0,Math.min(100,(Number(s)||0)*10)).toFixed(0)+'%';}
   function domainLabel(key){ return key==='breathing'?'Breathing':key==='stability'?'Stability & Functionality':'Recovery'; }
@@ -6069,83 +6069,99 @@ function generateDashboardV2(){
 
   var css = [
     '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
+    ':root{--navy-900:#061A3A;--navy-800:#09234D;--green-600:#159E5C;--green-500:#22C55E;--green-50:#EAF8F1;--red-600:#E40521;--red-500:#EF233C;--red-50:#FFEDEF;--orange-500:#F59E0B;--orange-50:#FFF4E2;--blue-600:#0B57C2;--blue-50:#EAF2FF;--purple-600:#6A1B9A;--purple-50:#F4EAFE;--gray-900:#0F172A;--gray-700:#334155;--gray-600:#475569;--gray-400:#94A3B8;--gray-200:#E2E8F0;--white:#FFFFFF;}',
     '*{box-sizing:border-box;margin:0;padding:0;}',
-    'body{font-family:"Inter",Arial,sans-serif;background:#0B1020;color:#EAF0FF;-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
-    '.dash-page{width:100%;min-height:100vh;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);padding:16px;}',
-    '.shell{max-width:980px;margin:0 auto;}',
-    '.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#94A3B8;font-size:10px;text-transform:uppercase;letter-spacing:1.6px;font-weight:800;}',
-    '.grid{display:grid;grid-template-columns:1.45fr .55fr;gap:10px;}',
-    '.card{background:rgba(15,23,42,.86);border:1px solid rgba(148,163,184,.22);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.24);position:relative;overflow:hidden;}',
-    '.card-pad{padding:16px;}',
-    '.label{font-size:10px;text-transform:uppercase;letter-spacing:1.7px;color:#93A4BD;font-weight:900;margin-bottom:8px;}',
-    '.athlete{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}',
-    '.name{font-size:29px;line-height:1;font-weight:900;letter-spacing:-1.2px;color:#fff;margin-bottom:8px;}',
-    '.meta{font-size:12px;color:#B8C3D6;line-height:1.7;}',
-    '.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(45,212,191,.35);background:rgba(45,212,191,.10);color:#7DE8DA;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;white-space:nowrap;}',
-    '.score-hero{padding:24px;background:linear-gradient(150deg,rgba(12,21,38,.98),rgba(24,38,64,.98));border:1.5px solid rgba(45,212,191,.42);box-shadow:0 0 58px rgba(45,212,191,.16);}',
-    '.hero-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}',
-    '.score-num{font-size:104px;font-weight:950;letter-spacing:-7px;line-height:.82;color:#fff;}',
-    '.score-den{font-size:28px;color:#64748B;letter-spacing:-1px;margin-left:3px;}',
-    '.band{display:inline-block;background:'+sc(R.overall)+';color:#08111F;border-radius:999px;padding:7px 12px;font-size:11px;font-weight:900;margin-top:10px;}',
-    '.score-sub{font-size:12px;color:#AAB7CC;line-height:1.45;max-width:390px;margin-top:10px;}',
-    '.ring{width:118px;height:118px;border-radius:50%;background:conic-gradient('+sc(R.overall)+' '+pct(R.overall)+',rgba(148,163,184,.16) 0);display:flex;align-items:center;justify-content:center;box-shadow:0 0 42px '+sc(R.overall)+'30;flex-shrink:0;}',
-    '.ring::after{content:"";width:78px;height:78px;border-radius:50%;background:#101827;border:1px solid rgba(148,163,184,.18);}',
-    '.body-age{padding:14px 16px;background:linear-gradient(145deg,rgba(49,46,129,.92),rgba(14,165,233,.24));}',
-    '.age-num{font-size:55px;font-weight:950;line-height:.84;letter-spacing:-3px;color:#fff;}',
-    '.age-unit{font-size:18px;color:#BFDBFE;font-weight:800;margin-left:5px;}',
-    '.age-status{margin-top:7px;font-size:12px;font-weight:800;color:#E0F2FE;}',
-    '.age-delta{font-size:10.5px;color:#B8C3D6;margin-top:4px;line-height:1.35;}',
-    '.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}',
-    '.domain-card{padding:10px;border-radius:16px;background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);}',
-    '.domain-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;font-weight:900;color:#fff;}',
-    '.domain-score{font-size:29px;line-height:1;font-weight:950;color:#fff;letter-spacing:-1.3px;}',
-    '.domain-band{font-size:10px;font-weight:800;color:#AAB7CC;margin-top:5px;}',
-    '.bar{height:6px;background:rgba(148,163,184,.17);border-radius:999px;overflow:hidden;margin-top:8px;}',
+    'body{font-family:"Inter",Arial,sans-serif;background:#EEF2F7;color:var(--gray-900);-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+    '.printbar{position:sticky;top:0;z-index:10;background:var(--navy-900);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;color:#fff;border-bottom:1px solid rgba(148,163,184,.25);}',
+    '.printbar button{background:var(--green-500);color:var(--navy-900);border:0;border-radius:999px;padding:9px 18px;font-weight:900;cursor:pointer;}',
+    '.dash-page{width:100%;min-height:100vh;background:var(--white);padding:22px;}',
+    '.shell{max-width:1120px;margin:0 auto;}',
+    '.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;color:var(--navy-900);}',
+    '.brand{display:flex;gap:13px;align-items:center;}',
+    '.mark{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--green-500),var(--navy-900));box-shadow:0 10px 24px rgba(6,26,58,.18);}',
+    '.brand-name{font-size:25px;font-weight:950;letter-spacing:-.7px;line-height:1;color:var(--navy-900);}',
+    '.brand-name span{color:var(--green-600);}',
+    '.tagline{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--navy-800);font-weight:800;margin-top:8px;}',
+    '.report-meta{text-align:right;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--navy-900);font-weight:900;}',
+    '.date-pill{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:8px 13px;border:1px solid var(--gray-200);border-radius:9px;background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.05);font-size:12px;letter-spacing:0;text-transform:none;color:var(--gray-700);}',
+    '.grid{display:grid;grid-template-columns:1.08fr 1fr .95fr;gap:16px;margin-bottom:16px;}',
+    '.card{background:#fff;border:1px solid var(--gray-200);border-radius:14px;box-shadow:0 10px 30px rgba(15,23,42,.06);position:relative;overflow:hidden;page-break-inside:avoid;break-inside:avoid;}',
+    '.label{font-size:12px;text-transform:uppercase;letter-spacing:1.7px;color:var(--navy-900);font-weight:950;margin-bottom:10px;}',
+    '.athlete-card{background:linear-gradient(135deg,#061A3A,#09234D);color:#fff;min-height:170px;padding:22px;}',
+    '.athlete-card:after{content:"";position:absolute;right:-32px;bottom:-42px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06);}',
+    '.athlete-label{color:var(--green-500);font-size:12px;text-transform:uppercase;letter-spacing:1.7px;font-weight:950;margin-bottom:18px;}',
+    '.athlete-name{font-size:25px;font-weight:900;line-height:1.1;letter-spacing:-.7px;margin-bottom:18px;}',
+    '.athlete-meta{font-size:14px;line-height:1.7;color:rgba(255,255,255,.86);}',
+    '.score-hero{padding:20px 22px;text-align:center;border:0;box-shadow:none;background:#fff;}',
+    '.score-num{font-size:104px;font-weight:950;letter-spacing:-7px;line-height:.82;color:var(--navy-900);}',
+    '.score-den{font-size:25px;color:var(--gray-400);letter-spacing:-1px;margin-left:4px;font-weight:700;}',
+    '.band{display:inline-block;border:1px solid currentColor;border-radius:6px;padding:5px 13px;font-size:12px;font-weight:900;margin-top:10px;text-transform:uppercase;background:rgba(245,158,11,.10);}',
+    '.score-sub{font-size:13px;color:var(--gray-700);line-height:1.55;max-width:360px;margin:12px auto 0;}',
+    '.body-age{padding:18px;border-color:#A7D8BD;background:linear-gradient(145deg,#FFFFFF,var(--green-50));}',
+    '.age-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 14px;}',
+    '.age-num{font-size:42px;font-weight:950;line-height:1;color:var(--navy-900);letter-spacing:-2px;text-align:center;}',
+    '.age-caption{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--gray-700);font-weight:850;text-align:center;margin-bottom:6px;}',
+    '.age-unit{display:block;font-size:11px;color:var(--gray-600);font-weight:700;letter-spacing:0;margin-top:4px;}',
+    '.age-delta{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--red-50);border:1px solid #FDA4AF;border-radius:10px;padding:11px;font-size:13px;color:var(--navy-900);font-weight:850;text-align:center;}',
+    '.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px;}',
+    '.domain-card{padding:18px;border-radius:14px;box-shadow:0 9px 26px rgba(15,23,42,.05);}',
+    '.domain-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}',
+    '.domain-icon{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:29px;font-weight:900;}',
+    '.domain-name{font-size:13px;text-transform:uppercase;letter-spacing:.8px;font-weight:950;color:var(--gray-900);}',
+    '.domain-score{font-size:44px;font-weight:950;line-height:1;letter-spacing:-2px;}',
+    '.domain-score span{font-size:16px;color:var(--gray-400);font-weight:700;}',
+    '.domain-band{font-size:13px;font-weight:850;margin-top:11px;}',
+    '.bar{height:9px;background:rgba(148,163,184,.16);border-radius:999px;overflow:hidden;margin-top:14px;}',
     '.fill{height:100%;border-radius:999px;}',
-    '.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}',
-    '.metric-card{padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(148,163,184,.16);min-width:0;}',
-    '.metric-row{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;min-width:0;}',
-    '.metric-num{font-size:20px;font-weight:950;line-height:1;color:#fff;letter-spacing:-.8px;white-space:nowrap;}',
-    '.metric-small{font-size:8.4px;color:#AAB7CC;line-height:1.25;margin-top:3px;overflow-wrap:normal;word-break:normal;}',
-    '.stack{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}',
-    '.limiter{border-color:rgba(240,78,69,.44);background:linear-gradient(145deg,rgba(127,29,29,.44),rgba(15,23,42,.86));}',
-    '.big-title{font-size:21px;font-weight:950;color:#fff;line-height:1.1;letter-spacing:-.5px;margin-bottom:6px;}',
-    '.copy{font-size:12.3px;color:#C6D1E3;line-height:1.42;}',
-    '.coach{margin-top:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:8px 10px;font-size:11px;font-weight:800;color:#FDE68A;}',
-    '.impact{border-color:rgba(53,167,255,.40);}',
-    '.summary{margin-top:8px;padding:9px 13px;border-radius:16px;background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.32);font-size:12.2px;font-weight:900;color:#DFFFFB;line-height:1.25;}',
-    '.plan{margin-top:8px;padding:11px;}',
-    '.plan-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-end;margin-bottom:8px;}',
-    '.plan-title{font-size:17px;font-weight:950;letter-spacing:-.4px;color:#fff;}',
-    '.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
-    '.plan-step{background:rgba(255,255,255,.06);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:9px;}',
-    '.day{font-size:9px;text-transform:uppercase;letter-spacing:1.1px;color:#7DE8DA;font-weight:950;margin-bottom:5px;}',
-    '.step-title{font-size:12.5px;font-weight:950;color:#fff;margin-bottom:5px;line-height:1.15;}',
-    '.step-copy{font-size:9.8px;color:#B8C3D6;line-height:1.28;}',
-    '.card,.domain-card,.summary,.plan,.plan-step,.limiter,.impact,.metric-card,.metric-grid,.stack,.grid,.domain-grid{page-break-inside:avoid;break-inside:avoid;-webkit-column-break-inside:avoid;}',
-    '.card,.domain-card,.summary,.plan,.limiter,.impact,.metric-card,.metric-grid,.stack,.grid,.domain-grid{page-break-before:auto;break-before:auto;}',
-    '.coach-page{width:100%;min-height:100vh;background:linear-gradient(135deg,#08111F 0%,#101827 52%,#15111F 100%);padding:18px;color:#EAF0FF;page-break-before:always;break-before:page;}',
-    '.coach-shell{max-width:980px;margin:0 auto;}',
-    '.coach-hero{background:linear-gradient(150deg,rgba(12,21,38,.98),rgba(24,38,64,.98));border:1.5px solid rgba(45,212,191,.32);border-radius:20px;padding:18px;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;}',
-    '.coach-title{font-size:34px;font-weight:950;letter-spacing:-1.4px;color:#fff;line-height:1;}',
-    '.coach-sub{font-size:12px;color:#AAB7CC;line-height:1.45;margin-top:8px;max-width:720px;}',
-    '.coach-section{background:rgba(15,23,42,.86);border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:14px;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;}',
-    '.coach-section-title{font-size:10px;text-transform:uppercase;letter-spacing:1.7px;color:#7DE8DA;font-weight:950;margin-bottom:9px;}',
-    '.coach-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
-    '.coach-item{background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:10px;page-break-inside:avoid;break-inside:avoid;}',
-    '.coach-item-title{font-size:13px;font-weight:950;color:#fff;line-height:1.2;margin-bottom:6px;}',
-    '.impact-pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:8.5px;font-weight:950;background:rgba(45,212,191,.12);color:#7DE8DA;margin-bottom:6px;}',
-    '.coach-copy{font-size:10.5px;color:#C6D1E3;line-height:1.38;}',
-    '.coach-bullets{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
-    '.coach-bullet{background:rgba(53,167,255,.08);border:1px solid rgba(53,167,255,.22);border-radius:14px;padding:10px;font-size:11px;color:#DCEBFF;line-height:1.4;font-weight:750;}',
-    '.retest-row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}',
-    '.retest-card{background:rgba(255,255,255,.055);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:12px;text-align:center;}',
-    '.retest-num{font-size:29px;font-weight:950;color:#fff;line-height:1;white-space:nowrap;}',
-    '.retest-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#AAB7CC;font-weight:900;margin-top:6px;}',
-    '.printbar{position:sticky;top:0;z-index:10;background:#0F172A;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(148,163,184,.25);}',
-    '.printbar button{background:#2DD4BF;color:#06111F;border:0;border-radius:999px;padding:9px 18px;font-weight:900;cursor:pointer;}',
-    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;max-height:297mm;overflow:hidden;padding:5mm;background:radial-gradient(circle at 15% 5%,rgba(45,212,191,.20),transparent 30%),radial-gradient(circle at 85% 0%,rgba(96,165,250,.18),transparent 34%),linear-gradient(135deg,#08111F 0%,#101827 48%,#15111F 100%);}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:96px}.age-num{font-size:50px}.plan-title{font-size:16px}.metric-grid{page-break-before:auto;break-before:auto}.metric-small{font-size:8px}.metric-num{font-size:18px}.step-copy{font-size:9.2px}.coach-page{width:210mm;min-height:297mm;padding:7mm;page-break-before:always;break-before:page}.coach-title{font-size:31px}.coach-section{padding:12px;margin-bottom:8px}.coach-copy{font-size:9.8px}}',
-    '@media screen and (max-width:760px){.grid,.stack,.domain-grid,.metric-grid,.plan-grid{grid-template-columns:1fr}.score-hero{grid-row:auto}.hero-row{flex-direction:column}.score-num{font-size:82px}}'
+    '.limiter-card{display:grid;grid-template-columns:290px 1fr 1fr;border:2px solid var(--red-600);border-radius:12px;margin-bottom:16px;background:#fff;box-shadow:0 12px 34px rgba(228,5,33,.08);}',
+    '.limiter-flag{background:linear-gradient(135deg,var(--red-600),#B80017);color:#fff;padding:28px 24px;display:flex;align-items:center;gap:17px;font-weight:950;text-transform:uppercase;font-size:15px;line-height:1.35;}',
+    '.target-mark{width:62px;height:62px;border:4px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:29px;flex-shrink:0;}',
+    '.limiter-main{padding:22px 24px;border-right:1px solid #F3B6BE;}',
+    '.limiter-title{font-size:24px;font-weight:950;color:var(--red-600);line-height:1.12;letter-spacing:-.6px;margin-bottom:8px;}',
+    '.limiter-score{font-size:14px;font-weight:900;color:var(--red-600);margin-bottom:12px;}',
+    '.limiter-copy{font-size:13px;color:var(--gray-700);line-height:1.5;}',
+    '.impact-list{padding:22px 24px;}',
+    '.impact-list h4{font-size:13px;font-weight:950;color:var(--gray-900);margin-bottom:10px;}',
+    '.impact-list ul{list-style:none;display:grid;gap:9px;}',
+    '.impact-list li{font-size:12.5px;color:var(--gray-700);line-height:1.35;display:flex;gap:8px;}',
+    '.impact-list li:before{content:"⚑";color:var(--red-600);font-weight:900;}',
+    '.summary{margin-bottom:16px;padding:16px 22px;border-radius:12px;background:var(--blue-50);border:1px solid #BBD4FF;display:flex;align-items:center;gap:16px;font-size:14px;color:var(--gray-900);line-height:1.45;box-shadow:0 8px 24px rgba(11,87,194,.06);}',
+    '.summary-star{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--blue-600),#07347A);color:#fff;display:flex;align-items:center;justify-content:center;font-size:25px;flex-shrink:0;}',
+    '.plan{padding:18px;border-radius:14px;margin-bottom:14px;}',
+    '.plan-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:14px;}',
+    '.plan-title{font-size:16px;text-transform:uppercase;letter-spacing:1px;font-weight:950;color:var(--navy-900);}',
+    '.plan-note{font-size:12px;color:var(--gray-600);line-height:1.4;max-width:420px;text-align:right;}',
+    '.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}',
+    '.plan-step{background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,.05);}',
+    '.day{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--green-600);color:#fff;font-size:14px;font-weight:950;margin-bottom:13px;}',
+    '.step-title{font-size:17px;font-weight:950;line-height:1.2;margin-bottom:8px;}',
+    '.step-dose{font-size:13px;color:var(--gray-900);font-weight:750;line-height:1.35;min-height:34px;}',
+    '.step-benefit{font-size:12px;color:var(--gray-700);line-height:1.4;border-top:1px solid var(--gray-200);padding-top:10px;margin-top:11px;}',
+    '.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}',
+    '.metric-card{padding:15px 16px;border-radius:12px;background:#fff;border:1px solid var(--gray-200);box-shadow:0 8px 22px rgba(15,23,42,.05);}',
+    '.metric-card .label{font-size:11px;margin-bottom:8px;}',
+    '.metric-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;}',
+    '.metric-num{font-size:31px;font-weight:950;line-height:1;color:var(--navy-900);letter-spacing:-1.4px;white-space:nowrap;}',
+    '.metric-small{font-size:10.5px;color:var(--gray-600);line-height:1.35;margin-top:5px;}',
+    '.coach-page{width:100%;min-height:100vh;background:#fff;padding:22px;color:var(--gray-900);page-break-before:always;break-before:page;}',
+    '.coach-shell{max-width:1120px;margin:0 auto;}',
+    '.coach-hero{background:linear-gradient(135deg,var(--navy-900),var(--navy-800));color:#fff;border-radius:14px;padding:20px;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-title{font-size:32px;font-weight:950;letter-spacing:-1px;line-height:1;}',
+    '.coach-sub{font-size:12.5px;color:rgba(255,255,255,.78);line-height:1.45;margin-top:8px;max-width:760px;}',
+    '.coach-section{background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:15px;margin-bottom:12px;box-shadow:0 8px 24px rgba(15,23,42,.05);page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-section-title{font-size:11px;text-transform:uppercase;letter-spacing:1.7px;color:var(--navy-900);font-weight:950;margin-bottom:11px;}',
+    '.coach-grid-3,.coach-bullets,.retest-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}',
+    '.coach-item,.coach-bullet,.retest-card{background:#F8FAFC;border:1px solid var(--gray-200);border-radius:12px;padding:12px;page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-item-title{font-size:14px;font-weight:950;color:var(--navy-900);line-height:1.2;margin-bottom:7px;}',
+    '.impact-pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:950;background:var(--red-50);color:var(--red-600);margin-bottom:7px;}',
+    '.coach-copy,.coach-bullet{font-size:11px;color:var(--gray-700);line-height:1.4;}',
+    '.coach-bullet{background:var(--blue-50);border-color:#BBD4FF;font-weight:750;}',
+    '.retest-card{text-align:center;background:#fff;}',
+    '.retest-num{font-size:30px;font-weight:950;color:var(--navy-900);line-height:1;white-space:nowrap;}',
+    '.retest-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray-600);font-weight:900;margin-top:7px;}',
+    '.card,.domain-card,.summary,.plan,.plan-step,.limiter-card,.metric-card,.metric-grid,.grid,.domain-grid,.coach-section{page-break-inside:avoid;break-inside:avoid;-webkit-column-break-inside:avoid;}',
+    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;padding:7mm;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:92px}.domain-score{font-size:39px}.plan-step{padding:13px}.step-benefit{font-size:11px}.metric-card{padding:12px}.coach-page{width:210mm;min-height:297mm;padding:8mm;page-break-before:always;break-before:page}.coach-section{box-shadow:none;padding:12px;margin-bottom:10px}.coach-title{font-size:30px}}',
+    '@media screen and (max-width:760px){.grid,.domain-grid,.plan-grid,.metric-grid,.coach-grid-3,.coach-bullets,.retest-row{grid-template-columns:1fr}.limiter-card{grid-template-columns:1fr}.plan-note{text-align:left}.report-meta{text-align:left}.topbar{flex-direction:column;gap:14px}}'
   ].join('\n');
 
   var domains = [
@@ -6168,39 +6184,25 @@ function generateDashboardV2(){
     '<style>'+css+'</style></head><body>'+
     '<div class="printbar"><div>Dashboard V2 · '+esc(R.name)+'</div><button onclick="window.print()">Save as PDF</button></div>'+
     '<main class="dash-page"><div class="shell">'+
-      '<div class="topbar"><span>The Reset Lab Sports · Athlete Dashboard V2</span><span>'+esc(R.date || new Date().toLocaleDateString())+'</span></div>'+
+      '<div class="topbar"><div class="brand"><div class="mark"></div><div><div class="brand-name">The Reset Lab <span>Sports</span></div><div class="tagline">Measure · Understand · Improve</div></div></div><div class="report-meta">Sports Performance Assessment<br><span class="date-pill">📅 '+esc(R.date || new Date().toLocaleDateString())+'</span></div></div>'+
       '<section class="grid">'+
-        '<div class="card score-hero">'+
-          '<div class="label">Overall Score Hero</div>'+
-          '<div class="hero-row"><div><div><span class="score-num">'+R.overall.toFixed(1)+'</span><span class="score-den">/10</span></div>'+
-          '<div class="band">'+sl(R.overall)+'</div><div class="score-sub">'+esc(R.name)+' · '+esc(athleteMeta)+' · Weakest domain: <strong style="color:#fff">'+esc(R.weakDomain || domainLabel(lowKey))+'</strong>.</div></div>'+
-          '<div class="ring" aria-label="Overall score '+R.overall.toFixed(1)+' out of 10"></div></div>'+
-        '</div>'+
-        '<div class="card body-age">'+
-          '<div class="label" style="color:#BFDBFE">Body Age Card</div>'+
-          '<div><span class="age-num">'+ba.age+'</span><span class="age-unit">yrs</span></div>'+
-          '<div class="age-status">'+esc(ba.status)+'</div>'+
-          '<div class="age-delta">'+(ba.delta===0?'Aligned with chronological age.':(ba.delta>0?ba.delta+' years above chronological age target.':Math.abs(ba.delta)+' years younger than chronological age target.'))+'</div>'+
-        '</div>'+
+        '<div class="card athlete-card"><div class="athlete-label">● Athlete</div><div class="athlete-name">'+esc(R.name)+'</div><div class="athlete-meta">Age: '+esc(R.age || '—')+' &nbsp; | &nbsp; '+esc(athleteMeta)+'<br>Assessment ID: '+esc(R.assessmentID || '—')+'</div></div>'+
+        '<div class="score-hero"><div class="label">Overall Performance Score</div><div><span class="score-num">'+R.overall.toFixed(1)+'</span><span class="score-den">/10</span></div><div class="band" style="color:'+sc(R.overall)+'">'+sl(R.overall)+'</div><div class="score-sub">Composite across all three domains<br><strong>Weakest domain: '+esc(domainLabel(lowKey))+'</strong></div></div>'+
+        '<div class="card body-age"><div class="label">▣ Body Age</div><div class="age-grid"><div><div class="age-caption">Chronological Age</div><div class="age-num">'+esc(R.age || '—')+'<span class="age-unit">years</span></div></div><div><div class="age-caption">Body Performance Age</div><div class="age-num">'+ba.age+'<span class="age-unit">years</span></div></div></div><div class="age-delta">↑ '+esc(ba.status)+'</div></div>'+
       '</section>'+
       '<section class="domain-grid">'+domains.map(function(d){
         var score = domainScore(d.key);
-        return '<div class="domain-card"><div class="domain-top"><span>'+domainIcon(d.key)+' '+domainLabel(d.key)+'</span><span>'+score.toFixed(1)+'</span></div>'+
-          '<div class="domain-score">'+score.toFixed(1)+'<span style="font-size:13px;color:#64748B">/10</span></div>'+
-          '<div class="domain-band">'+sl(score)+'</div><div class="bar"><div class="fill" style="width:'+pct(score)+';background:'+d.accent+'"></div></div></div>';
+        var bg = score>=7 ? 'var(--green-50)' : score>=5.5 ? 'var(--orange-50)' : 'var(--red-50)';
+        var color = sc(score);
+        return '<div class="card domain-card" style="background:'+bg+';border-color:'+color+'33"><div class="domain-top"><div class="domain-icon" style="background:'+color+'">'+domainIcon(d.key)+'</div><div><div class="domain-name">'+domainLabel(d.key)+'</div><div class="domain-score" style="color:'+color+'">'+score.toFixed(1)+'<span> /10</span></div></div></div><div class="bar"><div class="fill" style="width:'+pct(score)+';background:'+color+'"></div></div><div class="domain-band" style="color:'+color+'">'+sl(score)+'</div></div>';
       }).join('')+'</section>'+
-      '<section class="stack">'+
-        '<div class="card card-pad limiter"><div class="label">Biggest Performance Limiter</div><div class="big-title">'+esc(limiter.title)+'</div><div class="copy">'+esc(limiter.why)+'</div><div class="coach">'+esc(limiter.cue)+'</div></div>'+
-        '<div class="card card-pad impact"><div class="label">Match-Day Impact</div><div class="big-title">'+domainIcon(lowKey)+' '+domainLabel(lowKey)+' shows up under fatigue</div><div class="copy">'+esc(matchImpact(lowKey,R.overall))+'</div></div>'+
-      '</section>'+
-      '<section class="summary">One-Line Summary · '+esc(lineSummary)+'</section>'+
-      '<section class="card plan"><div class="plan-head"><div><div class="label">Your Next 3 Actions</div><div class="plan-title">Behavioural coaching priorities from your assessment.</div></div><div class="pill">Target: '+domainLabel(lowKey)+'</div></div>'+
-        '<div class="plan-grid">'+plan.map(function(p){return '<div class="plan-step"><div class="day">'+esc(p.d)+'</div><div class="step-title">'+esc(p.t)+'</div><div class="step-copy" style="color:#EAF0FF;font-weight:800;margin-bottom:7px;">'+esc(p.dose)+'</div><div class="step-copy"><strong style="color:#7DE8DA">Expected benefit:</strong> '+esc(p.x)+'</div></div>';}).join('')+'</div>'+
-      '</section>'+
+      '<section class="limiter-card"><div class="limiter-flag"><div class="target-mark">◎</div><div>Your Biggest<br>Performance Limiter</div></div><div class="limiter-main"><div class="limiter-title">'+esc(domainLabel(lowKey))+'</div><div class="limiter-score">Score: '+currentLimiterScore.toFixed(1)+' / 10</div><div class="limiter-copy">'+esc(limiter.why)+'</div></div><div class="impact-list"><h4>What this means in performance</h4><ul>'+coachBullets.map(function(b){return '<li>'+esc(b)+'</li>';}).join('')+'</ul></div></section>'+
+      '<section class="summary"><div class="summary-star">★</div><div><div class="label" style="color:var(--blue-600);margin-bottom:6px;">One Line Summary</div>'+esc(lineSummary)+'</div></section>'+
+      '<section class="card plan"><div class="plan-head"><div class="plan-title">Your 30-Day Action Plan</div><div class="plan-note">Focus on these priorities to improve performance and reduce fatigue.</div></div><div class="plan-grid">'+plan.map(function(p,idx){return '<div class="plan-step"><div class="day">'+(idx+1)+'</div><div class="step-title">'+esc(p.t)+'</div><div class="step-dose">'+esc(p.dose)+'</div><div class="step-benefit"><strong>Expected Benefit</strong><br>'+esc(p.x)+'</div></div>';}).join('')+'</div></section>'+
       '<section class="metric-grid">'+
-        '<div class="metric-card"><div class="label">Target Score</div><div class="metric-row"><div><div class="metric-small">Current Score</div><div class="metric-num">'+currentLimiterScore.toFixed(1)+'</div></div><div><div class="metric-small">Target Score</div><div class="metric-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div></div><div><div class="metric-small">Gap To Target</div><div class="metric-num" style="color:#FDE68A">'+gapToTarget.toFixed(1)+'</div></div></div><div class="metric-small">Target domain: '+domainLabel(lowKey)+'</div></div>'+
-        '<div class="metric-card"><div class="label">Projected Potential</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+R.overall.toFixed(1)+'</div></div><div><div class="metric-small">Potential</div><div class="metric-num" style="color:#7DE8DA">'+potentialScore.toFixed(1)+'</div></div></div><div class="metric-small">If '+domainLabel(lowKey).toLowerCase()+' reaches 7.0.</div></div>'+
-        '<div class="metric-card"><div class="label">Coach Metric</div><div class="metric-small">Performance Readiness</div><div class="metric-num" style="font-size:22px;color:#35A7FF;white-space:nowrap;">'+readinessPct+'%</div><div class="metric-small">Overall score as readiness %.</div></div>'+
+        '<div class="metric-card"><div class="label">What is driving your score?</div><div class="metric-num" style="font-size:18px;color:var(--red-600);letter-spacing:0;">'+esc(domainLabel(lowKey))+'</div><div class="metric-small">Improving this area is likely to produce the greatest overall benefit.</div></div>'+
+        '<div class="metric-card"><div class="label">Target Score</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+currentLimiterScore.toFixed(1)+'</div></div><div><div class="metric-small">Target</div><div class="metric-num" style="color:var(--green-600)">'+targetScore.toFixed(1)+'</div></div><div><div class="metric-small">Gap</div><div class="metric-num" style="color:var(--orange-500)">'+gapToTarget.toFixed(1)+'</div></div></div></div>'+
+        '<div class="metric-card"><div class="label">Overall Body Efficiency</div><div class="metric-num" style="color:var(--navy-900)">'+readinessPct+'%</div><div class="metric-small">Overall score converted to coach-facing readiness.</div></div>'+
       '</section>'+
     '</div></main>'+coachPage+'</body></html>';
 
