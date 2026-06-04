@@ -3389,6 +3389,115 @@ function scoreDNFE(holdSeconds,age){
   return parseFloat(score.toFixed(1));
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// CONTENT LIBRARY V2 SCHEMA (definition only; existing content not migrated)
+// ══════════════════════════════════════════════════════════════════════
+var TRL_CONTENT_V2_SCHEMA_VERSION = '2.0.0';
+var TRL_CONTENT_V2_SCHEMA = {
+  schemaVersion: TRL_CONTENT_V2_SCHEMA_VERSION,
+  status: 'schema_only_no_content_migration',
+  categories: [
+    'Performance Insight',
+    'Match-Day Impact',
+    'Coach Interpretation',
+    'Intervention Rationale',
+    'Exercise Prescription',
+    'Expected Outcome',
+    'Retest Guidance'
+  ],
+  severityBands: ['dys','strain','comp','active','efficient','peak'],
+  domains: {
+    breathing: 'Breathing',
+    stability: 'Stability & Functionality',
+    recovery: 'Recovery'
+  },
+  intervention: {
+    required: [
+      'exerciseName',
+      'prescription',
+      'whyItMatters',
+      'expectedOutcome',
+      'sportSpecificBenefit',
+      'progression',
+      'regression'
+    ],
+    shape: {
+      id: 'string - stable slug for lookup and reuse',
+      exerciseName: 'string - athlete-facing intervention name',
+      prescription: 'string - sets, reps, duration, frequency, and constraints',
+      whyItMatters: 'string - coach/athlete rationale for this intervention',
+      expectedOutcome: 'string - real-world outcome expected from consistent use',
+      sportSpecificBenefit: 'string - sport or role-specific transfer benefit',
+      progression: 'string - harder version once the athlete adapts',
+      regression: 'string - easier or safer version when symptoms, pain, or skill limit execution',
+      linkedDeficits: 'array<string> - deficit ids addressed by this intervention',
+      domain: 'breathing | stability | recovery',
+      contraindications: 'array<string> - safety exclusions or review prompts',
+      equipment: 'array<string> - required or optional equipment'
+    }
+  },
+  deficit: {
+    required: [
+      'deficitName',
+      'performanceInsight',
+      'matchDayImpact',
+      'coachInterpretation',
+      'severityBand'
+    ],
+    shape: {
+      id: 'string - stable slug for matching assessment findings',
+      deficitName: 'string - coach-facing deficit label',
+      performanceInsight: 'string - what the assessment finding means physically',
+      matchDayImpact: 'string - sport-specific performance consequence',
+      coachInterpretation: 'string - coaching meaning and prioritisation note',
+      severityBand: 'dys | strain | comp | active | efficient | peak',
+      domain: 'breathing | stability | recovery',
+      findingKeys: 'array<string> - assessment fields that can identify this deficit',
+      relatedInterventions: 'array<string> - intervention ids recommended for this deficit'
+    }
+  },
+  domainBandItem: {
+    required: [
+      'performanceInsight',
+      'matchDayImpact',
+      'coachInterpretation',
+      'expectedOutcome',
+      'retestGuidance'
+    ],
+    shape: {
+      performanceInsight: 'string - domain state in plain athlete language',
+      matchDayImpact: 'string - competition/training consequence for this domain and band',
+      coachInterpretation: 'string - coach-facing interpretation and priority',
+      expectedOutcome: 'string - likely outcome if this domain improves',
+      retestGuidance: 'string - when and why to reassess this domain',
+      deficitIds: 'array<string> - deficits eligible for this domain-band item',
+      interventionIds: 'array<string> - interventions eligible for this domain-band item',
+      seekReview: 'boolean - whether professional review should be recommended'
+    }
+  },
+  sportProfile: {
+    required: ['sportKey','sportName','athleteRole','domains'],
+    shape: {
+      sportKey: 'string - selected sport key used by the app',
+      sportName: 'string - display sport name',
+      athleteRole: 'string - role/profile label shown in reports',
+      priorityByBand: 'object<severityBand,string> - global coach interpretation by total score band',
+      domains: {
+        breathing: 'object<severityBand, domainBandItem>',
+        stability: 'object<severityBand, domainBandItem>',
+        recovery: 'object<severityBand, domainBandItem>'
+      },
+      deficits: 'object<deficitId, deficit>',
+      interventions: 'object<interventionId, intervention>'
+    }
+  }
+};
+var TRL_CONTENT_V2 = {
+  schemaVersion: TRL_CONTENT_V2_SCHEMA_VERSION,
+  migrationStatus: 'not_started',
+  sports: {}
+};
+
 var TRL_CONTENT = {};
 
 TRL_CONTENT.cricket_pace = {
