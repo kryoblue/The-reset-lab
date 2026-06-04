@@ -6022,7 +6022,86 @@ function generateDashboardV2(){
   function sentenceParts(text){
     return (String(text || '').match(/[^.!?]+[.!?]?/g) || []).map(function(t){return t.trim();}).filter(Boolean).slice(0,3);
   }
-  function collectBottlenecks(){
+  var contentDiversityAudit = {candidatesScored:0,duplicatesMerged:0,selected:[]};
+  var commonContentWords = {the:1,and:1,for:1,with:1,that:1,this:1,your:1,you:1,are:1,can:1,may:1,into:1,from:1,than:1,then:1,they:1,when:1,under:1,during:1,between:1,across:1,score:1,domain:1,performance:1,body:1,system:1,current:1,overall:1,expected:1,impact:1,ability:1};
+  function contentTokens(text){
+    return String(text || '').toLowerCase()
+      .replace(/&[^;]+;/g,' ')
+      .replace(/[^a-z0-9\s-]/g,' ')
+      .split(/\s+/)
+      .map(function(t){ return t.replace(/^(re|un)/,'').replace(/(ing|ed|s)$/,''); })
+      .filter(function(t){ return t.length>2 && !commonContentWords[t]; });
+  }
+  function contentSimilarity(a,b){
+    var aTokens = contentTokens(a);
+    var bTokens = contentTokens(b);
+    if(!aTokens.length || !bTokens.length) return 0;
+    var seen = {};
+    aTokens.forEach(function(t){ seen[t]=1; });
+    var overlap = 0;
+    bTokens.forEach(function(t){ if(seen[t]) overlap++; });
+    return overlap / Math.max(aTokens.length,bTokens.length);
+  }
+  function strongestImpactWeight(impact){
+    return impact==='High' ? 3 : impact==='Moderate' ? 2 : 1;
+  }
+  function scoreDiversityCandidate(text, used, impactWeight){
+    var maxSimilarity = (used || []).reduce(function(max,item){ return Math.max(max,contentSimilarity(text,item)); },0);
+    var score = Math.max(0,Math.round((((1-maxSimilarity)*75)+((impactWeight || 1)*8))*10)/10);
+    contentDiversityAudit.candidatesScored++;
+    return {score:score,similarity:maxSimilarity};
+  }
+  function uniqueContentPool(key){
+    var c = coachContent(key);
+    var pool = []
+      .concat(sentenceParts(c.consequence))
+      .concat(sentenceParts(c.gap))
+      .concat(sentenceParts(c.plain));
+    (c.actions || []).forEach(function(action){ pool = pool.concat(sentenceParts(action)); });
+    return pool.concat(sentenceParts(consequenceFor(key))).filter(function(text,idx,arr){
+      var exact = String(text || '').toLowerCase();
+      return text && arr.map(function(v){return String(v || '').toLowerCase();}).indexOf(exact)===idx;
+    });
+  }
+  function fallbackConsequence(key, idx){
+    var sport = sportMeta && sportMeta.sport !== 'Sport' ? sportMeta.sport.toLowerCase() : 'competition';
+    var options = key==='breathing' ? [
+      'Breathing control should translate into a quicker reset before the next high-intensity passage.',
+      'More efficient breathing should help the athlete hold pace without looking rushed late in '+sport+'.',
+      'A calmer breathing pattern should support clearer decisions after demanding efforts.'
+    ] : key==='stability' ? [
+      'Better movement control should improve push-off quality and landing confidence in game-speed positions.',
+      'Stronger stability should make cutting, stopping, and changing direction more repeatable in '+sport+'.',
+      'Cleaner control should reduce energy leaks when the athlete has to produce force quickly.'
+    ] : [
+      'Improved recovery should make training output more consistent from session to session.',
+      'A better recovery reserve should reduce late-session drop-off and improve readiness for '+sport+'.',
+      'Lower fatigue load should help the athlete adapt to training instead of carrying stress forward.'
+    ];
+    return options[idx % options.length];
+  }
+  function selectDiverseText(primary, alternatives, used, impactWeight, fallbackText){
+    var candidates = [primary].concat(alternatives || []).filter(Boolean);
+    var best = null;
+    candidates.forEach(function(text){
+      var audit = scoreDiversityCandidate(text,used,impactWeight);
+      if(!best || audit.score>best.score){ best = {text:text,score:audit.score,similarity:audit.similarity}; }
+    });
+    if(best && best.similarity>.48 && fallbackText){
+      var fallbackAudit = scoreDiversityCandidate(fallbackText,used,impactWeight);
+      if(fallbackAudit.score>=best.score || fallbackAudit.similarity<best.similarity){
+        best = {text:fallbackText,score:fallbackAudit.score,similarity:fallbackAudit.similarity};
+      }
+    }
+    if(best && best.similarity>.48) contentDiversityAudit.duplicatesMerged++;
+    var chosen = best ? best.text : (fallbackText || '');
+    if(chosen){
+      used.push(chosen);
+      contentDiversityAudit.selected.push({text:chosen,score:best ? best.score : 0,similarity:best ? best.similarity : 0});
+    }
+    return chosen;
+  }
+  function collectBottlenecks(used){
     var items = [
       {name:'Breathing Pattern',score:R.B.ps,key:'breathing'},
       {name:'Breathing Route',score:R.B.rs,key:'breathing'},
@@ -6041,31 +6120,69 @@ function generateDashboardV2(){
     return items.filter(function(i){return typeof i.score==='number' && !isNaN(i.score);})
       .sort(function(a,b){return a.score-b.score;})
       .slice(0,3)
-      .map(function(i){return {name:i.name,impact:impactLevel(i.score),consequence:consequenceFor(i.key)};});
+      .map(function(i,idx){
+        var impact = impactLevel(i.score);
+        return {
+          name:i.name,
+          impact:impact,
+          consequence:selectDiverseText(consequenceFor(i.key),uniqueContentPool(i.key),used,strongestImpactWeight(impact),fallbackConsequence(i.key,idx))
+        };
+      });
   }
-  function coachMatchBullets(){
+  function coachMatchBullets(used, limit){
     var keys = [lowKey].concat(['breathing','stability','recovery'].filter(function(k){return k!==lowKey;}));
+    var candidates = [];
+    keys.forEach(function(k,keyIndex){
+      uniqueContentPool(k).forEach(function(text){
+        candidates.push({text:text,key:k,weight:keyIndex===0?3:2});
+      });
+    });
+    candidates.sort(function(a,b){ return b.weight-a.weight; });
     var bullets = [];
-    keys.forEach(function(k){ sentenceParts(consequenceFor(k)).forEach(function(t){ if(bullets.length<3) bullets.push(t); }); });
+    candidates.forEach(function(c){
+      if(bullets.length >= (limit || 3)) return;
+      var audit = scoreDiversityCandidate(c.text,used,c.weight);
+      if(audit.similarity <= .48){
+        used.push(c.text);
+        contentDiversityAudit.selected.push({text:c.text,score:audit.score,similarity:audit.similarity});
+        bullets.push(c.text);
+      }
+    });
+    while(bullets.length < (limit || 3)){
+      var fallback = fallbackConsequence(keys[bullets.length % keys.length],bullets.length);
+      bullets.push(selectDiverseText(fallback,[],used,1,fallback));
+    }
     return bullets;
   }
-  function coachInterventions(){
+  function coachInterventions(used){
     var c = coachContent(lowKey);
+    var pool = uniqueContentPool(lowKey);
     var actions = (c.actions && c.actions.length ? c.actions : interventionSource(lowKey)).slice(0,3);
     return actions.map(function(raw,idx){
       var text = String(raw || '');
       var name = text.split(/\s[-–—]\s/)[0].split('.')[0].trim() || ('Intervention '+(idx+1));
       var detail = text.replace(name,'').replace(/^[-–—.\s]+/,'').trim();
+      var fallbackWhy = interventionBenefit(name,lowKey,idx);
       return {
         name:name,
-        why:detail || c.plain || consequenceFor(lowKey),
-        outcome:c.gap || consequenceFor(lowKey)
+        why:selectDiverseText(detail || c.plain || consequenceFor(lowKey),pool,used,2,fallbackWhy),
+        outcome:selectDiverseText(c.gap || consequenceFor(lowKey),pool.concat([fallbackWhy,fallbackConsequence(lowKey,idx)]),used,2,fallbackConsequence(lowKey,idx+1))
       };
     });
   }
-  var coachBottlenecks = collectBottlenecks();
-  var coachBullets = coachMatchBullets();
-  var coachPriorityInterventions = coachInterventions();
+  var reportUsedConsequences = [limiter.why,lineSummary].concat(plan.map(function(action){return action.x;}));
+  var dashboardImpactBullets = coachMatchBullets(reportUsedConsequences,3);
+  var coachBottlenecks = collectBottlenecks(reportUsedConsequences);
+  var coachBullets = coachMatchBullets(reportUsedConsequences,3);
+  var coachPriorityInterventions = coachInterventions(reportUsedConsequences);
+  contentDiversityAudit.uniqueInsights = contentDiversityAudit.selected.length;
+  contentDiversityAudit.averageScore = contentDiversityAudit.selected.length
+    ? Math.round((contentDiversityAudit.selected.reduce(function(sum,item){ return sum + item.score; },0) / contentDiversityAudit.selected.length) * 10) / 10
+    : 0;
+  contentDiversityAudit.minimumScore = contentDiversityAudit.selected.length
+    ? Math.min.apply(null,contentDiversityAudit.selected.map(function(item){ return item.score; }))
+    : 0;
+  window._dashboardV2ContentDiversity = contentDiversityAudit;
 
   var css = [
     '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
@@ -6196,7 +6313,7 @@ function generateDashboardV2(){
         var color = sc(score);
         return '<div class="card domain-card" style="background:'+bg+';border-color:'+color+'33"><div class="domain-top"><div class="domain-icon" style="background:'+color+'">'+domainIcon(d.key)+'</div><div><div class="domain-name">'+domainLabel(d.key)+'</div><div class="domain-score" style="color:'+color+'">'+score.toFixed(1)+'<span> /10</span></div></div></div><div class="bar"><div class="fill" style="width:'+pct(score)+';background:'+color+'"></div></div><div class="domain-band" style="color:'+color+'">'+sl(score)+'</div></div>';
       }).join('')+'</section>'+
-      '<section class="limiter-card"><div class="limiter-flag"><div class="target-mark">◎</div><div>Your Biggest<br>Performance Limiter</div></div><div class="limiter-main"><div class="limiter-title">'+esc(domainLabel(lowKey))+'</div><div class="limiter-score">Score: '+currentLimiterScore.toFixed(1)+' / 10</div><div class="limiter-copy">'+esc(limiter.why)+'</div></div><div class="impact-list"><h4>What this means in performance</h4><ul>'+coachBullets.map(function(b){return '<li>'+esc(b)+'</li>';}).join('')+'</ul></div></section>'+
+      '<section class="limiter-card"><div class="limiter-flag"><div class="target-mark">◎</div><div>Your Biggest<br>Performance Limiter</div></div><div class="limiter-main"><div class="limiter-title">'+esc(domainLabel(lowKey))+'</div><div class="limiter-score">Score: '+currentLimiterScore.toFixed(1)+' / 10</div><div class="limiter-copy">'+esc(limiter.why)+'</div></div><div class="impact-list"><h4>What this means in performance</h4><ul>'+dashboardImpactBullets.map(function(b){return '<li>'+esc(b)+'</li>';}).join('')+'</ul></div></section>'+
       '<section class="summary"><div class="summary-star">★</div><div><div class="label" style="color:var(--blue-600);margin-bottom:6px;">One Line Summary</div>'+esc(lineSummary)+'</div></section>'+
       '<section class="card plan"><div class="plan-head"><div class="plan-title">Your 30-Day Action Plan</div><div class="plan-note">Focus on these priorities to improve performance and reduce fatigue.</div></div><div class="plan-grid">'+plan.map(function(p,idx){return '<div class="plan-step"><div class="day">'+(idx+1)+'</div><div class="step-title">'+esc(p.t)+'</div><div class="step-dose">'+esc(p.dose)+'</div><div class="step-benefit"><strong>Expected Benefit</strong><br>'+esc(p.x)+'</div></div>';}).join('')+'</div></section>'+
       '<section class="metric-grid">'+
