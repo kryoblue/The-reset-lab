@@ -3389,6 +3389,115 @@ function scoreDNFE(holdSeconds,age){
   return parseFloat(score.toFixed(1));
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// CONTENT LIBRARY V2 SCHEMA (definition only; existing content not migrated)
+// ══════════════════════════════════════════════════════════════════════
+var TRL_CONTENT_V2_SCHEMA_VERSION = '2.0.0';
+var TRL_CONTENT_V2_SCHEMA = {
+  schemaVersion: TRL_CONTENT_V2_SCHEMA_VERSION,
+  status: 'schema_only_no_content_migration',
+  categories: [
+    'Performance Insight',
+    'Match-Day Impact',
+    'Coach Interpretation',
+    'Intervention Rationale',
+    'Exercise Prescription',
+    'Expected Outcome',
+    'Retest Guidance'
+  ],
+  severityBands: ['dys','strain','comp','active','efficient','peak'],
+  domains: {
+    breathing: 'Breathing',
+    stability: 'Stability & Functionality',
+    recovery: 'Recovery'
+  },
+  intervention: {
+    required: [
+      'exerciseName',
+      'prescription',
+      'whyItMatters',
+      'expectedOutcome',
+      'sportSpecificBenefit',
+      'progression',
+      'regression'
+    ],
+    shape: {
+      id: 'string - stable slug for lookup and reuse',
+      exerciseName: 'string - athlete-facing intervention name',
+      prescription: 'string - sets, reps, duration, frequency, and constraints',
+      whyItMatters: 'string - coach/athlete rationale for this intervention',
+      expectedOutcome: 'string - real-world outcome expected from consistent use',
+      sportSpecificBenefit: 'string - sport or role-specific transfer benefit',
+      progression: 'string - harder version once the athlete adapts',
+      regression: 'string - easier or safer version when symptoms, pain, or skill limit execution',
+      linkedDeficits: 'array<string> - deficit ids addressed by this intervention',
+      domain: 'breathing | stability | recovery',
+      contraindications: 'array<string> - safety exclusions or review prompts',
+      equipment: 'array<string> - required or optional equipment'
+    }
+  },
+  deficit: {
+    required: [
+      'deficitName',
+      'performanceInsight',
+      'matchDayImpact',
+      'coachInterpretation',
+      'severityBand'
+    ],
+    shape: {
+      id: 'string - stable slug for matching assessment findings',
+      deficitName: 'string - coach-facing deficit label',
+      performanceInsight: 'string - what the assessment finding means physically',
+      matchDayImpact: 'string - sport-specific performance consequence',
+      coachInterpretation: 'string - coaching meaning and prioritisation note',
+      severityBand: 'dys | strain | comp | active | efficient | peak',
+      domain: 'breathing | stability | recovery',
+      findingKeys: 'array<string> - assessment fields that can identify this deficit',
+      relatedInterventions: 'array<string> - intervention ids recommended for this deficit'
+    }
+  },
+  domainBandItem: {
+    required: [
+      'performanceInsight',
+      'matchDayImpact',
+      'coachInterpretation',
+      'expectedOutcome',
+      'retestGuidance'
+    ],
+    shape: {
+      performanceInsight: 'string - domain state in plain athlete language',
+      matchDayImpact: 'string - competition/training consequence for this domain and band',
+      coachInterpretation: 'string - coach-facing interpretation and priority',
+      expectedOutcome: 'string - likely outcome if this domain improves',
+      retestGuidance: 'string - when and why to reassess this domain',
+      deficitIds: 'array<string> - deficits eligible for this domain-band item',
+      interventionIds: 'array<string> - interventions eligible for this domain-band item',
+      seekReview: 'boolean - whether professional review should be recommended'
+    }
+  },
+  sportProfile: {
+    required: ['sportKey','sportName','athleteRole','domains'],
+    shape: {
+      sportKey: 'string - selected sport key used by the app',
+      sportName: 'string - display sport name',
+      athleteRole: 'string - role/profile label shown in reports',
+      priorityByBand: 'object<severityBand,string> - global coach interpretation by total score band',
+      domains: {
+        breathing: 'object<severityBand, domainBandItem>',
+        stability: 'object<severityBand, domainBandItem>',
+        recovery: 'object<severityBand, domainBandItem>'
+      },
+      deficits: 'object<deficitId, deficit>',
+      interventions: 'object<interventionId, intervention>'
+    }
+  }
+};
+var TRL_CONTENT_V2 = {
+  schemaVersion: TRL_CONTENT_V2_SCHEMA_VERSION,
+  migrationStatus: 'not_started',
+  sports: {}
+};
+
 var TRL_CONTENT = {};
 
 TRL_CONTENT.cricket_pace = {
@@ -5857,7 +5966,540 @@ function sendToSheet(consented) {
 function handleDownload() {
   // consent checkbox removed — data always sent with full details
   sendToSheet(true);
-  downloadPDF();
+  generateDashboardV2();
+}
+
+function generateDashboardV2(){
+  if(!RESULTS.name){alert('Please complete the assessment first.');return;}
+  var R=RESULTS;
+
+  function esc(v){
+    return String(v===undefined||v===null?'':v)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+  function sc(s){if(s>=7.0)return'#159E5C';if(s>=5.5)return'#F59E0B';return'#E40521';}
+  function sl(s){if(s>=9.5)return'Peak Regulation';if(s>=8.5)return'Efficient Regulation';if(s>=7.0)return'Active Optimization';if(s>=5.5)return'Functional Compensation';if(s>=4.0)return'Functional Strain';return'System Dysfunction';}
+  function pct(s){return Math.max(0,Math.min(100,(Number(s)||0)*10)).toFixed(0)+'%';}
+  function domainLabel(key){ return key==='breathing'?'Breathing':key==='stability'?'Stability & Functionality':'Recovery'; }
+  function domainIcon(key){ return key==='breathing'?'🫁':key==='stability'?'🧍':'🔋'; }
+  function domainScore(key){ return key==='breathing'?R.B.score:key==='stability'?R.P.score:R.R.score; }
+  function lowestDomainKey(){
+    if(R.B.score<=R.P.score && R.B.score<=R.R.score) return 'breathing';
+    if(R.P.score<=R.B.score && R.P.score<=R.R.score) return 'stability';
+    return 'recovery';
+  }
+  function limiterCopy(key){
+    var sport = getSportMeta(window._selectedSport || 'general');
+    var suffix = sport && sport.sport !== 'Sport' ? ' for '+sport.sport.toLowerCase() : ' on game day';
+    if(key==='breathing') return {
+      title:'Breathing efficiency is the current limiter',
+      why:'Your respiratory system is the lowest scoring domain. This can raise effort cost, slow between-effort recovery, and reduce repeat-intensity output'+suffix+'.',
+      cue:'Coach cue: control the breath first, then load the body.'
+    };
+    if(key==='stability') return {
+      title:'Stability capacity is the current limiter',
+      why:'Your movement-control system is the lowest scoring domain. This can reduce force transfer, balance confidence, and repeatable mechanics under fatigue'+suffix+'.',
+      cue:'Coach cue: earn position quality before chasing intensity.'
+    };
+    return {
+      title:'Recovery reserve is the current limiter',
+      why:'Your recovery system is the lowest scoring domain. This can blunt adaptation, increase perceived effort, and make performance less predictable'+suffix+'.',
+      cue:'Coach cue: recovery quality is training quality.'
+    };
+  }
+  function matchImpact(key, overall){
+    var intensity = overall>=8.5?'Protect current routines; small drops may show only under congested schedules.':overall>=7?'Generally trainable, but the lowest domain may show during repeated high-intensity blocks.':overall>=5.5?'Expect visible performance cost late in sessions, during repeat efforts, or under pressure.':'Prioritize restoration before major training-load increases.';
+    if(key==='breathing') return 'Match-day impact: slower reset between points, rallies, sprints, or sets. '+intensity;
+    if(key==='stability') return 'Match-day impact: reduced control during deceleration, landing, cutting, or fatigue-state technique. '+intensity;
+    return 'Match-day impact: lower readiness, slower warm-up response, and bigger performance swings across the session. '+intensity;
+  }
+  function interventionSource(key){
+    if(key==='breathing') return (R.B && R.B.ints) ? R.B.ints : [];
+    if(key==='stability') return (R.P && R.P.ints) ? R.P.ints : [];
+    return (R.R && R.R.ints) ? R.R.ints : [];
+  }
+  function interventionBenefit(title, key, idx){
+    var lookup = {
+      'Crocodile Breathing':'Helps you stay calmer between efforts and avoid early breathlessness under pressure.',
+      'Box Breathing':'Helps you reset faster after intense passages and make clearer decisions under fatigue.',
+      'Breath Hold Training':'Helps you tolerate hard efforts without panicking or losing rhythm late in play.',
+      'Cadence Breathing':'Helps you recover between repeated sprints, rallies, or sets with less visible fatigue.',
+      'Nasal Breath Training':'Builds a quieter recovery baseline so you start drills and matches less rushed.',
+      'Post-Activity Recovery Breath':'Helps bring breathing down quicker after hard blocks so the next effort starts cleaner.',
+      'Bulgarian Split Squat':'Improves single-leg drive so acceleration, take-off, and direction changes feel stronger.',
+      'Lateral Band Walk':'Improves side-to-side control for sharper court coverage, cutting, and defensive movement.',
+      'Single Leg Balance':'Improves landing confidence and ankle control when changing direction or absorbing contact.',
+      'Deep Neck Flexor Training':'Helps hold posture and visual focus when fatigue would normally pull the head forward.',
+      'Calf Raise Progression':'Improves repeat push-off capacity for sprinting, jumping, and staying springy late.',
+      'Sleep Hygiene Reset':'Improves next-day energy so training quality does not drop from poor recovery.',
+      'HRV Breathing Protocol':'Helps the nervous system downshift so you arrive at the next session more ready.',
+      'Strategic Rest Scheduling':'Helps prevent flat sessions by giving the body enough time to absorb training load.',
+      'Stress-Tension Release':'Helps reduce tightness so movement feels freer and less guarded during performance.'
+    };
+    var lookupKey = Object.keys(lookup).filter(function(k){ return k.toLowerCase()===String(title).toLowerCase(); })[0];
+    var base = lookupKey ? lookup[lookupKey]
+      : key==='breathing' ? 'Helps you recover faster between efforts and keep breathing under control when intensity rises.'
+      : key==='stability' ? 'Helps you move with better control, cleaner force transfer, and fewer breakdowns under fatigue.'
+      : 'Helps you show up fresher and keep performance more consistent across sessions.';
+    var focus = idx===0 ? 'Better opening intensity.' : idx===1 ? 'More consistent middle-session output.' : 'Stronger execution when fatigue builds.';
+    return base + ' ' + focus;
+  }
+  function actionDose(title, raw, key){
+    var lower = title.toLowerCase();
+    if(lower.indexOf('bulgarian split squat')>-1) return '3 x 8 each leg · 2x/week';
+    if(lower.indexOf('lateral band walk')>-1) return '3 x 15 steps each direction';
+    if(lower.indexOf('single leg')>-1 && lower.indexOf('balance')>-1) return '20 seconds each leg · 3x/day';
+    if(lower.indexOf('breath hold')>-1) return '4–5 controlled cycles · 3–4x/week';
+    if(lower.indexOf('box breathing')>-1) return '4 rounds · 4 seconds each phase';
+    if(lower.indexOf('nasal')>-1) return 'Daily awareness during rest and screen time';
+    if(lower.indexOf('sleep')>-1) return 'Nightly routine · consistent sleep/wake anchor';
+    if(lower.indexOf('hrv')>-1 || lower.indexOf('cadence')>-1) return '5 minutes daily';
+    if(lower.indexOf('rest')>-1) return 'Plan 1 low-load recovery window per week';
+    var match = String(raw).match(/((?:\d+|one|two|three|four|five|six|daily|weekly)[^.]*(?:reps?|sets?|seconds?|minutes?|mins?|steps?|cycles?|week|day|daily|weekly|x|×)[^.]*)/i);
+    if(match) return match[1].replace(/^[-–—\s]+/,'');
+    if(key==='breathing') return '5 minutes daily';
+    if(key==='stability') return '2–3 sets · 2–3x/week';
+    return 'Daily recovery habit';
+  }
+  function normalizeAction(raw, key, idx){
+    raw = String(raw || '');
+    var title = raw.split(/\s[-–—]\s/)[0].split('.')[0].trim();
+    if(title.length>42) title = title.replace(/\s+(protocol|training|drills|practice)$/i,'');
+    var displayTitle = title ? title.split(' ').map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ') : ('Action '+(idx+1));
+    return {
+      d:'Action '+(idx+1),
+      t:displayTitle,
+      dose:actionDose(title, raw, key),
+      x:interventionBenefit(title, key, idx)
+    };
+  }
+  function nextActions(key){
+    var source = interventionSource(key).slice(0,3);
+    if(source.length===0) source = key==='breathing' ? ['Cadence Breathing','Nasal Breath Training','Post-Activity Recovery Breath']
+      : key==='stability' ? ['Bulgarian Split Squat','Lateral Band Walk','Single Leg Balance']
+      : ['Sleep Hygiene Reset','HRV Breathing Protocol','Strategic Rest Scheduling'];
+    while(source.length<3){ source.push(key==='stability'?'Single Leg Balance':key==='breathing'?'Cadence Breathing':'HRV Breathing Protocol'); }
+    return source.slice(0,3).map(function(item,idx){ return normalizeAction(item,key,idx); });
+  }
+  function bodyAge(){
+    var chronologicalAge = Number(R.age || 0);
+    if(!chronologicalAge || chronologicalAge < 10){ chronologicalAge = 35; }
+    var ageShift = (7.5 - Number(R.overall || 0)) * 2;
+    ageShift = Math.max(-5, Math.min(8, ageShift));
+    var systemAge = Math.round(chronologicalAge + ageShift);
+    var status = systemAge <= chronologicalAge - 2 ? 'Performing younger than age'
+      : systemAge <= chronologicalAge + 2 ? 'Close to expected age'
+      : 'Efficiency below age expectation';
+    return {age:systemAge,status:status,delta:systemAge-chronologicalAge};
+  }
+
+  var lowKey = lowestDomainKey();
+  var limiter = limiterCopy(lowKey);
+  var ba = bodyAge();
+  var plan = nextActions(lowKey);
+  var targetScore = 7.0;
+  var currentLimiterScore = domainScore(lowKey);
+  var gapToTarget = Math.max(0, targetScore - currentLimiterScore);
+  var projectedScores = {b:R.B.score,p:R.P.score,r:R.R.score};
+  if(lowKey==='breathing') projectedScores.b = Math.max(projectedScores.b, targetScore);
+  else if(lowKey==='stability') projectedScores.p = Math.max(projectedScores.p, targetScore);
+  else projectedScores.r = Math.max(projectedScores.r, targetScore);
+  var projectedAcs = calcAdaptiveComposite(projectedScores.b, projectedScores.p, projectedScores.r,
+    R.prevScores ? R.prevScores.b : null, R.prevScores ? R.prevScores.p : null, R.prevScores ? R.prevScores.r : null);
+  var potentialScore = projectedAcs.final;
+  var readinessPct = Math.round((Number(R.overall)||0) * 10);
+  var sportMeta = getSportMeta(window._selectedSport || 'general');
+  var athleteMeta = (sportMeta && sportMeta.sport !== 'Sport' ? sportMeta.sport : (R.occ || 'Athlete'));
+  function coachSummary(key){
+    if(key==='breathing') return 'Your breathing is the limiter right now, so repeated efforts may feel harder than they should. Prioritize breath control first so your body can reset faster between plays.';
+    if(key==='stability') return 'Your stability is the limiter right now, so mechanics may break down when speed, fatigue, or direction changes increase. Prioritize clean single-leg control before adding more intensity.';
+    return 'Your recovery is the limiter right now, so performance may swing from session to session. Prioritize sleep, downshifting, and load management so training starts from a fresher baseline.';
+  }
+  var lineSummary = coachSummary(lowKey);
+  function coachContent(key){
+    return getContent(window._selectedSport || 'general', key, getBandKey(domainScore(key)));
+  }
+  function impactLevel(score){ return score < 5.5 ? 'High' : score < 7 ? 'Moderate' : 'Low'; }
+  var CONTENT_CATEGORY = {
+    PERFORMANCE_INSIGHT:'Performance Insight',
+    MATCH_DAY_IMPACT:'Match-Day Impact',
+    COACH_INTERPRETATION:'Coach Interpretation',
+    INTERVENTION_RATIONALE:'Intervention Rationale',
+    EXERCISE_PRESCRIPTION:'Exercise Prescription',
+    EXPECTED_OUTCOME:'Expected Outcome',
+    RETEST_GUIDANCE:'Retest Guidance'
+  };
+  var SECTION_CONTENT_RULES = {
+    bottlenecks:[CONTENT_CATEGORY.PERFORMANCE_INSIGHT,CONTENT_CATEGORY.COACH_INTERPRETATION],
+    matchDay:[CONTENT_CATEGORY.MATCH_DAY_IMPACT],
+    interventions:[CONTENT_CATEGORY.INTERVENTION_RATIONALE,CONTENT_CATEGORY.EXERCISE_PRESCRIPTION,CONTENT_CATEGORY.EXPECTED_OUTCOME],
+    retest:[CONTENT_CATEGORY.RETEST_GUIDANCE]
+  };
+  var contentTypeAudit = {categories:{},sections:{},crossCategoryBlocks:0,fieldMap:{plain:CONTENT_CATEGORY.PERFORMANCE_INSIGHT,consequence:CONTENT_CATEGORY.MATCH_DAY_IMPACT,gap:CONTENT_CATEGORY.EXPECTED_OUTCOME,actions:CONTENT_CATEGORY.EXERCISE_PRESCRIPTION,_priority:CONTENT_CATEGORY.COACH_INTERPRETATION,retestWindow:CONTENT_CATEGORY.RETEST_GUIDANCE}};
+  function trackTypedContent(category){
+    contentTypeAudit.categories[category] = (contentTypeAudit.categories[category] || 0) + 1;
+  }
+  function typedItem(category,text,source,rank){
+    if(!text) return null;
+    trackTypedContent(category);
+    return {category:category,text:String(text).trim(),source:source,rank:rank || 1};
+  }
+  function actionName(raw,idx){
+    var text = String(raw || '');
+    return text.split(/\s[-–—]\s/)[0].split('.')[0].trim() || ('Intervention '+(idx+1));
+  }
+  function actionDetail(raw,name){
+    return String(raw || '').replace(name,'').replace(/^[-–—.\s]+/,'').trim();
+  }
+  function retestWindowFor(score){
+    return score < 5.5 ? '6 Weeks' : score < 7 ? '6 Weeks' : '8 Weeks';
+  }
+  function typedCoachContent(key){
+    var c = coachContent(key);
+    var items = [];
+    var insight = typedItem(CONTENT_CATEGORY.PERFORMANCE_INSIGHT,c.plain,'plain',3);
+    var match = typedItem(CONTENT_CATEGORY.MATCH_DAY_IMPACT,c.consequence,'consequence',3);
+    var outcome = typedItem(CONTENT_CATEGORY.EXPECTED_OUTCOME,c.gap,'gap',3);
+    if(insight) items.push(insight);
+    if(match) items.push(match);
+    if(outcome) items.push(outcome);
+    (c.actions || []).forEach(function(action,idx){
+      var prescription = typedItem(CONTENT_CATEGORY.EXERCISE_PRESCRIPTION,action,'actions['+idx+']',2);
+      if(prescription) items.push(prescription);
+    });
+    items.push(typedItem(CONTENT_CATEGORY.RETEST_GUIDANCE,retestWindowFor(domainScore(key)),'score-band-retest-window',3));
+    return items.filter(Boolean);
+  }
+  function auditFullContentLibraryTypes(){
+    Object.keys(TRL_CONTENT || {}).forEach(function(sportKey){
+      var sportContent = TRL_CONTENT[sportKey] || {};
+      Object.keys(sportContent._priority || {}).forEach(function(priorityKey){
+        if(sportContent._priority[priorityKey]) trackTypedContent(CONTENT_CATEGORY.COACH_INTERPRETATION);
+      });
+      ['breathing','stability','recovery'].forEach(function(domain){
+        var domainContent = TRL_CONTENT[sportKey] && TRL_CONTENT[sportKey][domain];
+        if(!domainContent) return;
+        Object.keys(domainContent).forEach(function(band){
+          var item = domainContent[band];
+          if(!item || typeof item !== 'object') return;
+          [
+            [CONTENT_CATEGORY.PERFORMANCE_INSIGHT,item.plain],
+            [CONTENT_CATEGORY.MATCH_DAY_IMPACT,item.consequence],
+            [CONTENT_CATEGORY.EXPECTED_OUTCOME,item.gap],
+            [CONTENT_CATEGORY.RETEST_GUIDANCE,'Retest after completing the current priority block.']
+          ].forEach(function(entry){ if(entry[1]) trackTypedContent(entry[0]); });
+          (item.actions || []).forEach(function(action){
+            if(action) trackTypedContent(CONTENT_CATEGORY.EXERCISE_PRESCRIPTION);
+          });
+        });
+      });
+    });
+  }
+  function typedContentPool(key, sectionName){
+    var allowed = SECTION_CONTENT_RULES[sectionName] || [];
+    contentTypeAudit.sections[sectionName] = allowed.slice();
+    return typedCoachContent(key).filter(function(item){
+      var allowedItem = allowed.indexOf(item.category) > -1;
+      if(!allowedItem) contentTypeAudit.crossCategoryBlocks++;
+      return allowedItem;
+    });
+  }
+  function typedTextPool(key, sectionName){
+    return typedContentPool(key,sectionName).reduce(function(pool,item){
+      return pool.concat(sentenceParts(item.text).map(function(text){ return {text:text,category:item.category,rank:item.rank}; }));
+    },[]).filter(function(item,idx,arr){
+      var exact = item.text.toLowerCase();
+      return item.text && arr.map(function(v){return v.text.toLowerCase();}).indexOf(exact)===idx;
+    });
+  }
+  function sectionPrimaryText(key, sectionName){
+    var pool = typedTextPool(key,sectionName);
+    return pool.length ? pool[0].text : '';
+  }
+  function sentenceParts(text){
+    return (String(text || '').match(/[^.!?]+[.!?]?/g) || []).map(function(t){return t.trim();}).filter(Boolean).slice(0,3);
+  }
+  var contentDiversityAudit = {candidatesScored:0,duplicatesMerged:0,selected:[]};
+  var commonContentWords = {the:1,and:1,for:1,with:1,that:1,this:1,your:1,you:1,are:1,can:1,may:1,into:1,from:1,than:1,then:1,they:1,when:1,under:1,during:1,between:1,across:1,score:1,domain:1,performance:1,body:1,system:1,current:1,overall:1,expected:1,impact:1,ability:1};
+  function contentTokens(text){
+    return String(text || '').toLowerCase()
+      .replace(/&[^;]+;/g,' ')
+      .replace(/[^a-z0-9\s-]/g,' ')
+      .split(/\s+/)
+      .map(function(t){ return t.replace(/^(re|un)/,'').replace(/(ing|ed|s)$/,''); })
+      .filter(function(t){ return t.length>2 && !commonContentWords[t]; });
+  }
+  function contentSimilarity(a,b){
+    var aTokens = contentTokens(a);
+    var bTokens = contentTokens(b);
+    if(!aTokens.length || !bTokens.length) return 0;
+    var seen = {};
+    aTokens.forEach(function(t){ seen[t]=1; });
+    var overlap = 0;
+    bTokens.forEach(function(t){ if(seen[t]) overlap++; });
+    return overlap / Math.max(aTokens.length,bTokens.length);
+  }
+  function strongestImpactWeight(impact){
+    return impact==='High' ? 3 : impact==='Moderate' ? 2 : 1;
+  }
+  function scoreDiversityCandidate(text, used, impactWeight){
+    var maxSimilarity = (used || []).reduce(function(max,item){ return Math.max(max,contentSimilarity(text,item)); },0);
+    var score = Math.max(0,Math.round((((1-maxSimilarity)*75)+((impactWeight || 1)*8))*10)/10);
+    contentDiversityAudit.candidatesScored++;
+    return {score:score,similarity:maxSimilarity};
+  }
+  function selectDiverseText(primary, alternatives, used, impactWeight, fallbackText){
+    var candidates = [primary].concat(alternatives || []).map(function(item){ return typeof item === 'string' ? {text:item,rank:1} : item; }).filter(function(item){ return item && item.text; });
+    var best = null;
+    candidates.forEach(function(item){
+      var audit = scoreDiversityCandidate(item.text,used,(impactWeight || 1) + (item.rank || 0));
+      if(!best || audit.score>best.score){ best = {text:item.text,score:audit.score,similarity:audit.similarity}; }
+    });
+    if(best && best.similarity>.48 && fallbackText){
+      var fallbackAudit = scoreDiversityCandidate(fallbackText,used,impactWeight);
+      if(fallbackAudit.score>=best.score || fallbackAudit.similarity<best.similarity){
+        best = {text:fallbackText,score:fallbackAudit.score,similarity:fallbackAudit.similarity};
+      }
+    }
+    if(best && best.similarity>.48) contentDiversityAudit.duplicatesMerged++;
+    var chosen = best ? best.text : (fallbackText || '');
+    if(chosen){
+      used.push(chosen);
+      contentDiversityAudit.selected.push({text:chosen,score:best ? best.score : 0,similarity:best ? best.similarity : 0});
+    }
+    return chosen;
+  }
+  function collectBottlenecks(used){
+    var items = [
+      {name:'Breathing Pattern',score:R.B.ps,key:'breathing'},
+      {name:'Breathing Route',score:R.B.rs,key:'breathing'},
+      {name:'CO₂ Tolerance',score:R.B.ts,key:'breathing'},
+      {name:'Breathing Recovery',score:R.B.recs,key:'breathing'},
+      {name:'Single-Leg Push-Off',score:R.P.slhrScore,key:'stability'},
+      {name:'Sit-to-Stand Power',score:R.P.stsScore,key:'stability'},
+      {name:'Neck Endurance',score:R.P.dnfeScore,key:'stability'},
+      {name:'Single-Leg Stability',score:R.P.slsScore,key:'stability'},
+      {name:'Sleep Quality',score:R.R.sl,key:'recovery'},
+      {name:'Energy Output',score:R.R.en,key:'recovery'},
+      {name:'Mental Readiness',score:R.R.mn,key:'recovery'},
+      {name:'Body Tension',score:R.R.tn,key:'recovery'}
+    ];
+    if(!R.R.hrvSkip && R.R.hrv!==null && R.R.hrv!==undefined) items.push({name:'HRV Recovery Signal',score:R.R.hrv,key:'recovery'});
+    return items.filter(function(i){return typeof i.score==='number' && !isNaN(i.score);})
+      .sort(function(a,b){return a.score-b.score;})
+      .slice(0,3)
+      .map(function(i,idx){
+        var impact = impactLevel(i.score);
+        return {
+          name:i.name,
+          impact:impact,
+          consequence:selectDiverseText(sectionPrimaryText(i.key,'bottlenecks'),typedTextPool(i.key,'bottlenecks'),used,strongestImpactWeight(impact),'')
+        };
+      });
+  }
+  function coachMatchBullets(used, limit){
+    var keys = [lowKey].concat(['breathing','stability','recovery'].filter(function(k){return k!==lowKey;}));
+    var candidates = [];
+    keys.forEach(function(k,keyIndex){
+      typedTextPool(k,'matchDay').forEach(function(item){
+        candidates.push({text:item.text,key:k,rank:item.rank + (keyIndex===0?3:2)});
+      });
+    });
+    candidates.sort(function(a,b){ return (b.rank || 0)-(a.rank || 0); });
+    var bullets = [];
+    candidates.forEach(function(c){
+      if(bullets.length >= (limit || 3)) return;
+      var audit = scoreDiversityCandidate(c.text,used,c.rank);
+      if(audit.similarity <= .48){
+        used.push(c.text);
+        contentDiversityAudit.selected.push({text:c.text,score:audit.score,similarity:audit.similarity});
+        bullets.push(c.text);
+      }
+    });
+    return bullets;
+  }
+  function coachInterventions(used){
+    var pool = typedTextPool(lowKey,'interventions');
+    var outcomePool = typedContentPool(lowKey,'interventions')
+      .filter(function(item){ return item.category===CONTENT_CATEGORY.EXPECTED_OUTCOME; })
+      .reduce(function(list,item){ return list.concat(sentenceParts(item.text).map(function(text){ return {text:text,category:item.category,rank:item.rank}; })); },[]);
+    var actions = typedContentPool(lowKey,'interventions')
+      .filter(function(item){ return item.category===CONTENT_CATEGORY.EXERCISE_PRESCRIPTION; })
+      .map(function(item){ return item.text; });
+    if(!actions.length) actions = interventionSource(lowKey).slice(0,3);
+    actions = actions.slice(0,3);
+    return actions.map(function(raw,idx){
+      var name = actionName(raw,idx);
+      var detail = actionDetail(raw,name);
+      var fallbackWhy = interventionBenefit(name,lowKey,idx);
+      return {
+        name:name,
+        why:selectDiverseText(detail,pool,used,2,fallbackWhy),
+        outcome:selectDiverseText(outcomePool.length ? outcomePool[0].text : '',outcomePool.concat(pool).concat([{text:fallbackWhy,rank:1}]),used,2,fallbackWhy)
+      };
+    });
+  }
+  auditFullContentLibraryTypes();
+  var reportUsedConsequences = [limiter.why,lineSummary].concat(plan.map(function(action){return action.x;}));
+  var dashboardImpactBullets = coachMatchBullets(reportUsedConsequences,3);
+  var coachBottlenecks = collectBottlenecks(reportUsedConsequences);
+  var coachBullets = coachMatchBullets(reportUsedConsequences,3);
+  var coachPriorityInterventions = coachInterventions(reportUsedConsequences);
+  var retestGuidance = sectionPrimaryText(lowKey,'retest') || retestWindowFor(currentLimiterScore);
+  contentDiversityAudit.uniqueInsights = contentDiversityAudit.selected.length;
+  contentDiversityAudit.averageScore = contentDiversityAudit.selected.length
+    ? Math.round((contentDiversityAudit.selected.reduce(function(sum,item){ return sum + item.score; },0) / contentDiversityAudit.selected.length) * 10) / 10
+    : 0;
+  contentDiversityAudit.minimumScore = contentDiversityAudit.selected.length
+    ? Math.min.apply(null,contentDiversityAudit.selected.map(function(item){ return item.score; }))
+    : 0;
+  window._dashboardV2ContentDiversity = contentDiversityAudit;
+  window._dashboardV2ContentTypeAudit = contentTypeAudit;
+
+  var css = [
+    '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
+    ':root{--navy-900:#061A3A;--navy-800:#09234D;--green-600:#159E5C;--green-500:#22C55E;--green-50:#EAF8F1;--red-600:#E40521;--red-500:#EF233C;--red-50:#FFEDEF;--orange-500:#F59E0B;--orange-50:#FFF4E2;--blue-600:#0B57C2;--blue-50:#EAF2FF;--purple-600:#6A1B9A;--purple-50:#F4EAFE;--gray-900:#0F172A;--gray-700:#334155;--gray-600:#475569;--gray-400:#94A3B8;--gray-200:#E2E8F0;--white:#FFFFFF;}',
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    'body{font-family:"Inter",Arial,sans-serif;background:#EEF2F7;color:var(--gray-900);-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+    '.printbar{position:sticky;top:0;z-index:10;background:var(--navy-900);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;color:#fff;border-bottom:1px solid rgba(148,163,184,.25);}',
+    '.printbar button{background:var(--green-500);color:var(--navy-900);border:0;border-radius:999px;padding:9px 18px;font-weight:900;cursor:pointer;}',
+    '.dash-page{width:100%;min-height:100vh;background:var(--white);padding:22px;}',
+    '.shell{max-width:1120px;margin:0 auto;}',
+    '.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;color:var(--navy-900);}',
+    '.brand{display:flex;gap:13px;align-items:center;}',
+    '.mark{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--green-500),var(--navy-900));box-shadow:0 10px 24px rgba(6,26,58,.18);}',
+    '.brand-name{font-size:25px;font-weight:950;letter-spacing:-.7px;line-height:1;color:var(--navy-900);}',
+    '.brand-name span{color:var(--green-600);}',
+    '.tagline{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--navy-800);font-weight:800;margin-top:8px;}',
+    '.report-meta{text-align:right;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--navy-900);font-weight:900;}',
+    '.date-pill{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:8px 13px;border:1px solid var(--gray-200);border-radius:9px;background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.05);font-size:12px;letter-spacing:0;text-transform:none;color:var(--gray-700);}',
+    '.grid{display:grid;grid-template-columns:1.08fr 1fr .95fr;gap:16px;margin-bottom:16px;}',
+    '.card{background:#fff;border:1px solid var(--gray-200);border-radius:14px;box-shadow:0 10px 30px rgba(15,23,42,.06);position:relative;overflow:hidden;page-break-inside:avoid;break-inside:avoid;}',
+    '.label{font-size:12px;text-transform:uppercase;letter-spacing:1.7px;color:var(--navy-900);font-weight:950;margin-bottom:10px;}',
+    '.athlete-card{background:linear-gradient(135deg,#061A3A,#09234D);color:#fff;min-height:170px;padding:22px;}',
+    '.athlete-card:after{content:"";position:absolute;right:-32px;bottom:-42px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06);}',
+    '.athlete-label{color:var(--green-500);font-size:12px;text-transform:uppercase;letter-spacing:1.7px;font-weight:950;margin-bottom:18px;}',
+    '.athlete-name{font-size:25px;font-weight:900;line-height:1.1;letter-spacing:-.7px;margin-bottom:18px;}',
+    '.athlete-meta{font-size:14px;line-height:1.7;color:rgba(255,255,255,.86);}',
+    '.score-hero{padding:20px 22px;text-align:center;border:0;box-shadow:none;background:#fff;}',
+    '.score-num{font-size:104px;font-weight:950;letter-spacing:-7px;line-height:.82;color:var(--navy-900);}',
+    '.score-den{font-size:25px;color:var(--gray-400);letter-spacing:-1px;margin-left:4px;font-weight:700;}',
+    '.band{display:inline-block;border:1px solid currentColor;border-radius:6px;padding:5px 13px;font-size:12px;font-weight:900;margin-top:10px;text-transform:uppercase;background:rgba(245,158,11,.10);}',
+    '.score-sub{font-size:13px;color:var(--gray-700);line-height:1.55;max-width:360px;margin:12px auto 0;}',
+    '.body-age{padding:18px;border-color:#A7D8BD;background:linear-gradient(145deg,#FFFFFF,var(--green-50));}',
+    '.age-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 14px;}',
+    '.age-num{font-size:42px;font-weight:950;line-height:1;color:var(--navy-900);letter-spacing:-2px;text-align:center;}',
+    '.age-caption{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--gray-700);font-weight:850;text-align:center;margin-bottom:6px;}',
+    '.age-unit{display:block;font-size:11px;color:var(--gray-600);font-weight:700;letter-spacing:0;margin-top:4px;}',
+    '.age-delta{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--red-50);border:1px solid #FDA4AF;border-radius:10px;padding:11px;font-size:13px;color:var(--navy-900);font-weight:850;text-align:center;}',
+    '.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px;}',
+    '.domain-card{padding:18px;border-radius:14px;box-shadow:0 9px 26px rgba(15,23,42,.05);}',
+    '.domain-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}',
+    '.domain-icon{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:29px;font-weight:900;}',
+    '.domain-name{font-size:13px;text-transform:uppercase;letter-spacing:.8px;font-weight:950;color:var(--gray-900);}',
+    '.domain-score{font-size:44px;font-weight:950;line-height:1;letter-spacing:-2px;}',
+    '.domain-score span{font-size:16px;color:var(--gray-400);font-weight:700;}',
+    '.domain-band{font-size:13px;font-weight:850;margin-top:11px;}',
+    '.bar{height:9px;background:rgba(148,163,184,.16);border-radius:999px;overflow:hidden;margin-top:14px;}',
+    '.fill{height:100%;border-radius:999px;}',
+    '.limiter-card{display:grid;grid-template-columns:290px 1fr 1fr;border:2px solid var(--red-600);border-radius:12px;margin-bottom:16px;background:#fff;box-shadow:0 12px 34px rgba(228,5,33,.08);}',
+    '.limiter-flag{background:linear-gradient(135deg,var(--red-600),#B80017);color:#fff;padding:28px 24px;display:flex;align-items:center;gap:17px;font-weight:950;text-transform:uppercase;font-size:15px;line-height:1.35;}',
+    '.target-mark{width:62px;height:62px;border:4px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:29px;flex-shrink:0;}',
+    '.limiter-main{padding:22px 24px;border-right:1px solid #F3B6BE;}',
+    '.limiter-title{font-size:24px;font-weight:950;color:var(--red-600);line-height:1.12;letter-spacing:-.6px;margin-bottom:8px;}',
+    '.limiter-score{font-size:14px;font-weight:900;color:var(--red-600);margin-bottom:12px;}',
+    '.limiter-copy{font-size:13px;color:var(--gray-700);line-height:1.5;}',
+    '.impact-list{padding:22px 24px;}',
+    '.impact-list h4{font-size:13px;font-weight:950;color:var(--gray-900);margin-bottom:10px;}',
+    '.impact-list ul{list-style:none;display:grid;gap:9px;}',
+    '.impact-list li{font-size:12.5px;color:var(--gray-700);line-height:1.35;display:flex;gap:8px;}',
+    '.impact-list li:before{content:"⚑";color:var(--red-600);font-weight:900;}',
+    '.summary{margin-bottom:16px;padding:16px 22px;border-radius:12px;background:var(--blue-50);border:1px solid #BBD4FF;display:flex;align-items:center;gap:16px;font-size:14px;color:var(--gray-900);line-height:1.45;box-shadow:0 8px 24px rgba(11,87,194,.06);}',
+    '.summary-star{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--blue-600),#07347A);color:#fff;display:flex;align-items:center;justify-content:center;font-size:25px;flex-shrink:0;}',
+    '.plan{padding:18px;border-radius:14px;margin-bottom:14px;}',
+    '.plan-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:14px;}',
+    '.plan-title{font-size:16px;text-transform:uppercase;letter-spacing:1px;font-weight:950;color:var(--navy-900);}',
+    '.plan-note{font-size:12px;color:var(--gray-600);line-height:1.4;max-width:420px;text-align:right;}',
+    '.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}',
+    '.plan-step{background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,.05);}',
+    '.day{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--green-600);color:#fff;font-size:14px;font-weight:950;margin-bottom:13px;}',
+    '.step-title{font-size:17px;font-weight:950;line-height:1.2;margin-bottom:8px;}',
+    '.step-dose{font-size:13px;color:var(--gray-900);font-weight:750;line-height:1.35;min-height:34px;}',
+    '.step-benefit{font-size:12px;color:var(--gray-700);line-height:1.4;border-top:1px solid var(--gray-200);padding-top:10px;margin-top:11px;}',
+    '.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}',
+    '.metric-card{padding:15px 16px;border-radius:12px;background:#fff;border:1px solid var(--gray-200);box-shadow:0 8px 22px rgba(15,23,42,.05);}',
+    '.metric-card .label{font-size:11px;margin-bottom:8px;}',
+    '.metric-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;}',
+    '.metric-num{font-size:31px;font-weight:950;line-height:1;color:var(--navy-900);letter-spacing:-1.4px;white-space:nowrap;}',
+    '.metric-small{font-size:10.5px;color:var(--gray-600);line-height:1.35;margin-top:5px;}',
+    '.coach-page{width:100%;min-height:100vh;background:#fff;padding:22px;color:var(--gray-900);page-break-before:always;break-before:page;}',
+    '.coach-shell{max-width:1120px;margin:0 auto;}',
+    '.coach-hero{background:linear-gradient(135deg,var(--navy-900),var(--navy-800));color:#fff;border-radius:14px;padding:20px;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-title{font-size:32px;font-weight:950;letter-spacing:-1px;line-height:1;}',
+    '.coach-sub{font-size:12.5px;color:rgba(255,255,255,.78);line-height:1.45;margin-top:8px;max-width:760px;}',
+    '.coach-section{background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:15px;margin-bottom:12px;box-shadow:0 8px 24px rgba(15,23,42,.05);page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-section-title{font-size:11px;text-transform:uppercase;letter-spacing:1.7px;color:var(--navy-900);font-weight:950;margin-bottom:11px;}',
+    '.coach-grid-3,.coach-bullets,.retest-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}',
+    '.coach-item,.coach-bullet,.retest-card{background:#F8FAFC;border:1px solid var(--gray-200);border-radius:12px;padding:12px;page-break-inside:avoid;break-inside:avoid;}',
+    '.coach-item-title{font-size:14px;font-weight:950;color:var(--navy-900);line-height:1.2;margin-bottom:7px;}',
+    '.impact-pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:950;background:var(--red-50);color:var(--red-600);margin-bottom:7px;}',
+    '.coach-copy,.coach-bullet{font-size:11px;color:var(--gray-700);line-height:1.4;}',
+    '.coach-bullet{background:var(--blue-50);border-color:#BBD4FF;font-weight:750;}',
+    '.retest-card{text-align:center;background:#fff;}',
+    '.retest-num{font-size:30px;font-weight:950;color:var(--navy-900);line-height:1;white-space:nowrap;}',
+    '.retest-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray-600);font-weight:900;margin-top:7px;}',
+    '.card,.domain-card,.summary,.plan,.plan-step,.limiter-card,.metric-card,.metric-grid,.grid,.domain-grid,.coach-section{page-break-inside:avoid;break-inside:avoid;-webkit-column-break-inside:avoid;}',
+    '@media print{body{background:#fff;}.printbar{display:none!important;}.dash-page{width:210mm;min-height:297mm;padding:7mm;}.shell{max-width:none;}.card{box-shadow:none;}.score-num{font-size:92px}.domain-score{font-size:39px}.plan-step{padding:13px}.step-benefit{font-size:11px}.metric-card{padding:12px}.coach-page{width:210mm;min-height:297mm;padding:8mm;page-break-before:always;break-before:page}.coach-section{box-shadow:none;padding:12px;margin-bottom:10px}.coach-title{font-size:30px}}',
+    '@media screen and (max-width:760px){.grid,.domain-grid,.plan-grid,.metric-grid,.coach-grid-3,.coach-bullets,.retest-row{grid-template-columns:1fr}.limiter-card{grid-template-columns:1fr}.plan-note{text-align:left}.report-meta{text-align:left}.topbar{flex-direction:column;gap:14px}}'
+  ].join('\n');
+
+  var domains = [
+    {key:'breathing',accent:'#2DD4BF'},
+    {key:'stability',accent:'#A78BFA'},
+    {key:'recovery',accent:'#F59E0B'}
+  ];
+
+  var coachPage = '<section class="coach-page"><div class="coach-shell">'+
+    '<div class="coach-hero"><div class="label">Page 2 · Coach Performance Report</div><div class="coach-title">Coach Performance Report</div><div class="coach-sub">Actionable performance intelligence for coaches, physiotherapists, strength coaches, and parents. Built from the athlete&#39;s sport profile, weakest domain, assessment findings, and existing content library.</div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 1 · Performance Bottlenecks</div><div class="coach-grid-3">'+coachBottlenecks.map(function(b){return '<div class="coach-item"><div class="coach-item-title">'+esc(b.name)+'</div><span class="impact-pill">'+esc(b.impact)+' Impact</span><div class="coach-copy">'+esc(b.consequence)+'</div></div>';}).join('')+'</div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 2 · Match-Day Impact</div><div class="coach-bullets">'+coachBullets.map(function(b){return '<div class="coach-bullet">'+esc(b)+'</div>';}).join('')+'</div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 3 · Priority Interventions</div><div class="coach-grid-3">'+coachPriorityInterventions.map(function(i){return '<div class="coach-item"><div class="coach-item-title">'+esc(i.name)+'</div><div class="coach-copy"><strong style="color:#7DE8DA">Why it matters:</strong> '+esc(i.why)+'</div><div class="coach-copy" style="margin-top:7px;"><strong style="color:#FDE68A">Expected outcome:</strong> '+esc(i.outcome)+'</div></div>';}).join('')+'</div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 4 · Retest Recommendation</div><div class="retest-row"><div class="retest-card"><div class="retest-num">'+currentLimiterScore.toFixed(1)+'</div><div class="retest-label">Current Score</div></div><div class="retest-card"><div class="retest-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div><div class="retest-label">Target Score</div></div><div class="retest-card"><div class="retest-num" style="color:#FDE68A">'+esc(retestGuidance)+'</div><div class="retest-label">Recommended Retest Window</div></div></div></div>'+
+  '</div></section>';
+
+  var html = '<!DOCTYPE html><html lang="en"><head>'+
+    '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">'+
+    '<title>The Reset Lab Sports Dashboard V2 — '+esc(R.name)+'</title>'+
+    '<style>'+css+'</style></head><body>'+
+    '<div class="printbar"><div>Dashboard V2 · '+esc(R.name)+'</div><button onclick="window.print()">Save as PDF</button></div>'+
+    '<main class="dash-page"><div class="shell">'+
+      '<div class="topbar"><div class="brand"><div class="mark"></div><div><div class="brand-name">The Reset Lab <span>Sports</span></div><div class="tagline">Measure · Understand · Improve</div></div></div><div class="report-meta">Sports Performance Assessment<br><span class="date-pill">📅 '+esc(R.date || new Date().toLocaleDateString())+'</span></div></div>'+
+      '<section class="grid">'+
+        '<div class="card athlete-card"><div class="athlete-label">● Athlete</div><div class="athlete-name">'+esc(R.name)+'</div><div class="athlete-meta">Age: '+esc(R.age || '—')+' &nbsp; | &nbsp; '+esc(athleteMeta)+'<br>Assessment ID: '+esc(R.assessmentID || '—')+'</div></div>'+
+        '<div class="score-hero"><div class="label">Overall Performance Score</div><div><span class="score-num">'+R.overall.toFixed(1)+'</span><span class="score-den">/10</span></div><div class="band" style="color:'+sc(R.overall)+'">'+sl(R.overall)+'</div><div class="score-sub">Composite across all three domains<br><strong>Weakest domain: '+esc(domainLabel(lowKey))+'</strong></div></div>'+
+        '<div class="card body-age"><div class="label">▣ Body Age</div><div class="age-grid"><div><div class="age-caption">Chronological Age</div><div class="age-num">'+esc(R.age || '—')+'<span class="age-unit">years</span></div></div><div><div class="age-caption">Body Performance Age</div><div class="age-num">'+ba.age+'<span class="age-unit">years</span></div></div></div><div class="age-delta">↑ '+esc(ba.status)+'</div></div>'+
+      '</section>'+
+      '<section class="domain-grid">'+domains.map(function(d){
+        var score = domainScore(d.key);
+        var bg = score>=7 ? 'var(--green-50)' : score>=5.5 ? 'var(--orange-50)' : 'var(--red-50)';
+        var color = sc(score);
+        return '<div class="card domain-card" style="background:'+bg+';border-color:'+color+'33"><div class="domain-top"><div class="domain-icon" style="background:'+color+'">'+domainIcon(d.key)+'</div><div><div class="domain-name">'+domainLabel(d.key)+'</div><div class="domain-score" style="color:'+color+'">'+score.toFixed(1)+'<span> /10</span></div></div></div><div class="bar"><div class="fill" style="width:'+pct(score)+';background:'+color+'"></div></div><div class="domain-band" style="color:'+color+'">'+sl(score)+'</div></div>';
+      }).join('')+'</section>'+
+      '<section class="limiter-card"><div class="limiter-flag"><div class="target-mark">◎</div><div>Your Biggest<br>Performance Limiter</div></div><div class="limiter-main"><div class="limiter-title">'+esc(domainLabel(lowKey))+'</div><div class="limiter-score">Score: '+currentLimiterScore.toFixed(1)+' / 10</div><div class="limiter-copy">'+esc(limiter.why)+'</div></div><div class="impact-list"><h4>What this means in performance</h4><ul>'+dashboardImpactBullets.map(function(b){return '<li>'+esc(b)+'</li>';}).join('')+'</ul></div></section>'+
+      '<section class="summary"><div class="summary-star">★</div><div><div class="label" style="color:var(--blue-600);margin-bottom:6px;">One Line Summary</div>'+esc(lineSummary)+'</div></section>'+
+      '<section class="card plan"><div class="plan-head"><div class="plan-title">Your 30-Day Action Plan</div><div class="plan-note">Focus on these priorities to improve performance and reduce fatigue.</div></div><div class="plan-grid">'+plan.map(function(p,idx){return '<div class="plan-step"><div class="day">'+(idx+1)+'</div><div class="step-title">'+esc(p.t)+'</div><div class="step-dose">'+esc(p.dose)+'</div><div class="step-benefit"><strong>Expected Benefit</strong><br>'+esc(p.x)+'</div></div>';}).join('')+'</div></section>'+
+      '<section class="metric-grid">'+
+        '<div class="metric-card"><div class="label">What is driving your score?</div><div class="metric-num" style="font-size:18px;color:var(--red-600);letter-spacing:0;">'+esc(domainLabel(lowKey))+'</div><div class="metric-small">Improving this area is likely to produce the greatest overall benefit.</div></div>'+
+        '<div class="metric-card"><div class="label">Target Score</div><div class="metric-row"><div><div class="metric-small">Current</div><div class="metric-num">'+currentLimiterScore.toFixed(1)+'</div></div><div><div class="metric-small">Target</div><div class="metric-num" style="color:var(--green-600)">'+targetScore.toFixed(1)+'</div></div><div><div class="metric-small">Gap</div><div class="metric-num" style="color:var(--orange-500)">'+gapToTarget.toFixed(1)+'</div></div></div></div>'+
+        '<div class="metric-card"><div class="label">Overall Body Efficiency</div><div class="metric-num" style="color:var(--navy-900)">'+readinessPct+'%</div><div class="metric-small">Overall score converted to coach-facing readiness.</div></div>'+
+      '</section>'+
+    '</div></main>'+coachPage+'</body></html>';
+
+  downloadReport(html);
 }
 
 function downloadPDF(){
