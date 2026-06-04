@@ -6015,9 +6015,101 @@ function generateDashboardV2(){
     return getContent(window._selectedSport || 'general', key, getBandKey(domainScore(key)));
   }
   function impactLevel(score){ return score < 5.5 ? 'High' : score < 7 ? 'Moderate' : 'Low'; }
-  function consequenceFor(key){
+  var CONTENT_CATEGORY = {
+    PERFORMANCE_INSIGHT:'Performance Insight',
+    MATCH_DAY_IMPACT:'Match-Day Impact',
+    COACH_INTERPRETATION:'Coach Interpretation',
+    INTERVENTION_RATIONALE:'Intervention Rationale',
+    EXERCISE_PRESCRIPTION:'Exercise Prescription',
+    EXPECTED_OUTCOME:'Expected Outcome',
+    RETEST_GUIDANCE:'Retest Guidance'
+  };
+  var SECTION_CONTENT_RULES = {
+    bottlenecks:[CONTENT_CATEGORY.PERFORMANCE_INSIGHT,CONTENT_CATEGORY.COACH_INTERPRETATION],
+    matchDay:[CONTENT_CATEGORY.MATCH_DAY_IMPACT],
+    interventions:[CONTENT_CATEGORY.INTERVENTION_RATIONALE,CONTENT_CATEGORY.EXERCISE_PRESCRIPTION,CONTENT_CATEGORY.EXPECTED_OUTCOME],
+    retest:[CONTENT_CATEGORY.RETEST_GUIDANCE]
+  };
+  var contentTypeAudit = {categories:{},sections:{},crossCategoryBlocks:0,fieldMap:{plain:CONTENT_CATEGORY.PERFORMANCE_INSIGHT,consequence:CONTENT_CATEGORY.MATCH_DAY_IMPACT,gap:CONTENT_CATEGORY.EXPECTED_OUTCOME,actions:CONTENT_CATEGORY.EXERCISE_PRESCRIPTION,_priority:CONTENT_CATEGORY.COACH_INTERPRETATION,retestWindow:CONTENT_CATEGORY.RETEST_GUIDANCE}};
+  function trackTypedContent(category){
+    contentTypeAudit.categories[category] = (contentTypeAudit.categories[category] || 0) + 1;
+  }
+  function typedItem(category,text,source,rank){
+    if(!text) return null;
+    trackTypedContent(category);
+    return {category:category,text:String(text).trim(),source:source,rank:rank || 1};
+  }
+  function actionName(raw,idx){
+    var text = String(raw || '');
+    return text.split(/\s[-–—]\s/)[0].split('.')[0].trim() || ('Intervention '+(idx+1));
+  }
+  function actionDetail(raw,name){
+    return String(raw || '').replace(name,'').replace(/^[-–—.\s]+/,'').trim();
+  }
+  function retestWindowFor(score){
+    return score < 5.5 ? '6 Weeks' : score < 7 ? '6 Weeks' : '8 Weeks';
+  }
+  function typedCoachContent(key){
     var c = coachContent(key);
-    return c.consequence || c.gap || c.plain || '';
+    var items = [];
+    var insight = typedItem(CONTENT_CATEGORY.PERFORMANCE_INSIGHT,c.plain,'plain',3);
+    var match = typedItem(CONTENT_CATEGORY.MATCH_DAY_IMPACT,c.consequence,'consequence',3);
+    var outcome = typedItem(CONTENT_CATEGORY.EXPECTED_OUTCOME,c.gap,'gap',3);
+    if(insight) items.push(insight);
+    if(match) items.push(match);
+    if(outcome) items.push(outcome);
+    (c.actions || []).forEach(function(action,idx){
+      var prescription = typedItem(CONTENT_CATEGORY.EXERCISE_PRESCRIPTION,action,'actions['+idx+']',2);
+      if(prescription) items.push(prescription);
+    });
+    items.push(typedItem(CONTENT_CATEGORY.RETEST_GUIDANCE,retestWindowFor(domainScore(key)),'score-band-retest-window',3));
+    return items.filter(Boolean);
+  }
+  function auditFullContentLibraryTypes(){
+    Object.keys(TRL_CONTENT || {}).forEach(function(sportKey){
+      var sportContent = TRL_CONTENT[sportKey] || {};
+      Object.keys(sportContent._priority || {}).forEach(function(priorityKey){
+        if(sportContent._priority[priorityKey]) trackTypedContent(CONTENT_CATEGORY.COACH_INTERPRETATION);
+      });
+      ['breathing','stability','recovery'].forEach(function(domain){
+        var domainContent = TRL_CONTENT[sportKey] && TRL_CONTENT[sportKey][domain];
+        if(!domainContent) return;
+        Object.keys(domainContent).forEach(function(band){
+          var item = domainContent[band];
+          if(!item || typeof item !== 'object') return;
+          [
+            [CONTENT_CATEGORY.PERFORMANCE_INSIGHT,item.plain],
+            [CONTENT_CATEGORY.MATCH_DAY_IMPACT,item.consequence],
+            [CONTENT_CATEGORY.EXPECTED_OUTCOME,item.gap],
+            [CONTENT_CATEGORY.RETEST_GUIDANCE,'Retest after completing the current priority block.']
+          ].forEach(function(entry){ if(entry[1]) trackTypedContent(entry[0]); });
+          (item.actions || []).forEach(function(action){
+            if(action) trackTypedContent(CONTENT_CATEGORY.EXERCISE_PRESCRIPTION);
+          });
+        });
+      });
+    });
+  }
+  function typedContentPool(key, sectionName){
+    var allowed = SECTION_CONTENT_RULES[sectionName] || [];
+    contentTypeAudit.sections[sectionName] = allowed.slice();
+    return typedCoachContent(key).filter(function(item){
+      var allowedItem = allowed.indexOf(item.category) > -1;
+      if(!allowedItem) contentTypeAudit.crossCategoryBlocks++;
+      return allowedItem;
+    });
+  }
+  function typedTextPool(key, sectionName){
+    return typedContentPool(key,sectionName).reduce(function(pool,item){
+      return pool.concat(sentenceParts(item.text).map(function(text){ return {text:text,category:item.category,rank:item.rank}; }));
+    },[]).filter(function(item,idx,arr){
+      var exact = item.text.toLowerCase();
+      return item.text && arr.map(function(v){return v.text.toLowerCase();}).indexOf(exact)===idx;
+    });
+  }
+  function sectionPrimaryText(key, sectionName){
+    var pool = typedTextPool(key,sectionName);
+    return pool.length ? pool[0].text : '';
   }
   function sentenceParts(text){
     return (String(text || '').match(/[^.!?]+[.!?]?/g) || []).map(function(t){return t.trim();}).filter(Boolean).slice(0,3);
@@ -6051,41 +6143,12 @@ function generateDashboardV2(){
     contentDiversityAudit.candidatesScored++;
     return {score:score,similarity:maxSimilarity};
   }
-  function uniqueContentPool(key){
-    var c = coachContent(key);
-    var pool = []
-      .concat(sentenceParts(c.consequence))
-      .concat(sentenceParts(c.gap))
-      .concat(sentenceParts(c.plain));
-    (c.actions || []).forEach(function(action){ pool = pool.concat(sentenceParts(action)); });
-    return pool.concat(sentenceParts(consequenceFor(key))).filter(function(text,idx,arr){
-      var exact = String(text || '').toLowerCase();
-      return text && arr.map(function(v){return String(v || '').toLowerCase();}).indexOf(exact)===idx;
-    });
-  }
-  function fallbackConsequence(key, idx){
-    var sport = sportMeta && sportMeta.sport !== 'Sport' ? sportMeta.sport.toLowerCase() : 'competition';
-    var options = key==='breathing' ? [
-      'Breathing control should translate into a quicker reset before the next high-intensity passage.',
-      'More efficient breathing should help the athlete hold pace without looking rushed late in '+sport+'.',
-      'A calmer breathing pattern should support clearer decisions after demanding efforts.'
-    ] : key==='stability' ? [
-      'Better movement control should improve push-off quality and landing confidence in game-speed positions.',
-      'Stronger stability should make cutting, stopping, and changing direction more repeatable in '+sport+'.',
-      'Cleaner control should reduce energy leaks when the athlete has to produce force quickly.'
-    ] : [
-      'Improved recovery should make training output more consistent from session to session.',
-      'A better recovery reserve should reduce late-session drop-off and improve readiness for '+sport+'.',
-      'Lower fatigue load should help the athlete adapt to training instead of carrying stress forward.'
-    ];
-    return options[idx % options.length];
-  }
   function selectDiverseText(primary, alternatives, used, impactWeight, fallbackText){
-    var candidates = [primary].concat(alternatives || []).filter(Boolean);
+    var candidates = [primary].concat(alternatives || []).map(function(item){ return typeof item === 'string' ? {text:item,rank:1} : item; }).filter(function(item){ return item && item.text; });
     var best = null;
-    candidates.forEach(function(text){
-      var audit = scoreDiversityCandidate(text,used,impactWeight);
-      if(!best || audit.score>best.score){ best = {text:text,score:audit.score,similarity:audit.similarity}; }
+    candidates.forEach(function(item){
+      var audit = scoreDiversityCandidate(item.text,used,(impactWeight || 1) + (item.rank || 0));
+      if(!best || audit.score>best.score){ best = {text:item.text,score:audit.score,similarity:audit.similarity}; }
     });
     if(best && best.similarity>.48 && fallbackText){
       var fallbackAudit = scoreDiversityCandidate(fallbackText,used,impactWeight);
@@ -6125,7 +6188,7 @@ function generateDashboardV2(){
         return {
           name:i.name,
           impact:impact,
-          consequence:selectDiverseText(consequenceFor(i.key),uniqueContentPool(i.key),used,strongestImpactWeight(impact),fallbackConsequence(i.key,idx))
+          consequence:selectDiverseText(sectionPrimaryText(i.key,'bottlenecks'),typedTextPool(i.key,'bottlenecks'),used,strongestImpactWeight(impact),'')
         };
       });
   }
@@ -6133,48 +6196,51 @@ function generateDashboardV2(){
     var keys = [lowKey].concat(['breathing','stability','recovery'].filter(function(k){return k!==lowKey;}));
     var candidates = [];
     keys.forEach(function(k,keyIndex){
-      uniqueContentPool(k).forEach(function(text){
-        candidates.push({text:text,key:k,weight:keyIndex===0?3:2});
+      typedTextPool(k,'matchDay').forEach(function(item){
+        candidates.push({text:item.text,key:k,rank:item.rank + (keyIndex===0?3:2)});
       });
     });
-    candidates.sort(function(a,b){ return b.weight-a.weight; });
+    candidates.sort(function(a,b){ return (b.rank || 0)-(a.rank || 0); });
     var bullets = [];
     candidates.forEach(function(c){
       if(bullets.length >= (limit || 3)) return;
-      var audit = scoreDiversityCandidate(c.text,used,c.weight);
+      var audit = scoreDiversityCandidate(c.text,used,c.rank);
       if(audit.similarity <= .48){
         used.push(c.text);
         contentDiversityAudit.selected.push({text:c.text,score:audit.score,similarity:audit.similarity});
         bullets.push(c.text);
       }
     });
-    while(bullets.length < (limit || 3)){
-      var fallback = fallbackConsequence(keys[bullets.length % keys.length],bullets.length);
-      bullets.push(selectDiverseText(fallback,[],used,1,fallback));
-    }
     return bullets;
   }
   function coachInterventions(used){
-    var c = coachContent(lowKey);
-    var pool = uniqueContentPool(lowKey);
-    var actions = (c.actions && c.actions.length ? c.actions : interventionSource(lowKey)).slice(0,3);
+    var pool = typedTextPool(lowKey,'interventions');
+    var outcomePool = typedContentPool(lowKey,'interventions')
+      .filter(function(item){ return item.category===CONTENT_CATEGORY.EXPECTED_OUTCOME; })
+      .reduce(function(list,item){ return list.concat(sentenceParts(item.text).map(function(text){ return {text:text,category:item.category,rank:item.rank}; })); },[]);
+    var actions = typedContentPool(lowKey,'interventions')
+      .filter(function(item){ return item.category===CONTENT_CATEGORY.EXERCISE_PRESCRIPTION; })
+      .map(function(item){ return item.text; });
+    if(!actions.length) actions = interventionSource(lowKey).slice(0,3);
+    actions = actions.slice(0,3);
     return actions.map(function(raw,idx){
-      var text = String(raw || '');
-      var name = text.split(/\s[-–—]\s/)[0].split('.')[0].trim() || ('Intervention '+(idx+1));
-      var detail = text.replace(name,'').replace(/^[-–—.\s]+/,'').trim();
+      var name = actionName(raw,idx);
+      var detail = actionDetail(raw,name);
       var fallbackWhy = interventionBenefit(name,lowKey,idx);
       return {
         name:name,
-        why:selectDiverseText(detail || c.plain || consequenceFor(lowKey),pool,used,2,fallbackWhy),
-        outcome:selectDiverseText(c.gap || consequenceFor(lowKey),pool.concat([fallbackWhy,fallbackConsequence(lowKey,idx)]),used,2,fallbackConsequence(lowKey,idx+1))
+        why:selectDiverseText(detail,pool,used,2,fallbackWhy),
+        outcome:selectDiverseText(outcomePool.length ? outcomePool[0].text : '',outcomePool.concat(pool).concat([{text:fallbackWhy,rank:1}]),used,2,fallbackWhy)
       };
     });
   }
+  auditFullContentLibraryTypes();
   var reportUsedConsequences = [limiter.why,lineSummary].concat(plan.map(function(action){return action.x;}));
   var dashboardImpactBullets = coachMatchBullets(reportUsedConsequences,3);
   var coachBottlenecks = collectBottlenecks(reportUsedConsequences);
   var coachBullets = coachMatchBullets(reportUsedConsequences,3);
   var coachPriorityInterventions = coachInterventions(reportUsedConsequences);
+  var retestGuidance = sectionPrimaryText(lowKey,'retest') || retestWindowFor(currentLimiterScore);
   contentDiversityAudit.uniqueInsights = contentDiversityAudit.selected.length;
   contentDiversityAudit.averageScore = contentDiversityAudit.selected.length
     ? Math.round((contentDiversityAudit.selected.reduce(function(sum,item){ return sum + item.score; },0) / contentDiversityAudit.selected.length) * 10) / 10
@@ -6183,6 +6249,7 @@ function generateDashboardV2(){
     ? Math.min.apply(null,contentDiversityAudit.selected.map(function(item){ return item.score; }))
     : 0;
   window._dashboardV2ContentDiversity = contentDiversityAudit;
+  window._dashboardV2ContentTypeAudit = contentTypeAudit;
 
   var css = [
     '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");',
@@ -6292,7 +6359,7 @@ function generateDashboardV2(){
     '<div class="coach-section"><div class="coach-section-title">Section 1 · Performance Bottlenecks</div><div class="coach-grid-3">'+coachBottlenecks.map(function(b){return '<div class="coach-item"><div class="coach-item-title">'+esc(b.name)+'</div><span class="impact-pill">'+esc(b.impact)+' Impact</span><div class="coach-copy">'+esc(b.consequence)+'</div></div>';}).join('')+'</div></div>'+
     '<div class="coach-section"><div class="coach-section-title">Section 2 · Match-Day Impact</div><div class="coach-bullets">'+coachBullets.map(function(b){return '<div class="coach-bullet">'+esc(b)+'</div>';}).join('')+'</div></div>'+
     '<div class="coach-section"><div class="coach-section-title">Section 3 · Priority Interventions</div><div class="coach-grid-3">'+coachPriorityInterventions.map(function(i){return '<div class="coach-item"><div class="coach-item-title">'+esc(i.name)+'</div><div class="coach-copy"><strong style="color:#7DE8DA">Why it matters:</strong> '+esc(i.why)+'</div><div class="coach-copy" style="margin-top:7px;"><strong style="color:#FDE68A">Expected outcome:</strong> '+esc(i.outcome)+'</div></div>';}).join('')+'</div></div>'+
-    '<div class="coach-section"><div class="coach-section-title">Section 4 · Retest Recommendation</div><div class="retest-row"><div class="retest-card"><div class="retest-num">'+currentLimiterScore.toFixed(1)+'</div><div class="retest-label">Current Score</div></div><div class="retest-card"><div class="retest-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div><div class="retest-label">Target Score</div></div><div class="retest-card"><div class="retest-num" style="color:#FDE68A">6 Weeks</div><div class="retest-label">Recommended Retest Window</div></div></div></div>'+
+    '<div class="coach-section"><div class="coach-section-title">Section 4 · Retest Recommendation</div><div class="retest-row"><div class="retest-card"><div class="retest-num">'+currentLimiterScore.toFixed(1)+'</div><div class="retest-label">Current Score</div></div><div class="retest-card"><div class="retest-num" style="color:#7DE8DA">'+targetScore.toFixed(1)+'</div><div class="retest-label">Target Score</div></div><div class="retest-card"><div class="retest-num" style="color:#FDE68A">'+esc(retestGuidance)+'</div><div class="retest-label">Recommended Retest Window</div></div></div></div>'+
   '</div></section>';
 
   var html = '<!DOCTYPE html><html lang="en"><head>'+
